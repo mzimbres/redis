@@ -142,7 +142,10 @@ public:
    // have been written.
    // Must be called before cancel_on_conn_lost() because it might change
    // request status.
-   auto commit_write(std::size_t bytes_written) -> bool;
+   auto
+   commit_write(
+      std::size_t bytes_written,
+      std::chrono::steady_clock::duration time_writing = std::chrono::steady_clock::duration{0}) -> bool;
 
    // To be called after a successful read operation.
    // Must be called before cancel_on_conn_lost() because it might change
@@ -193,7 +196,10 @@ public:
    [[nodiscard]]
    auto prepare_read()-> system::error_code;
 
-   void commit_read(std::size_t read_size);
+   void
+   commit_read(
+      std::size_t read_size,
+      std::chrono::steady_clock::duration time_reading = std::chrono::steady_clock::duration{0});
 
    [[nodiscard]]
    auto get_read_buffer_size() const noexcept -> std::size_t;

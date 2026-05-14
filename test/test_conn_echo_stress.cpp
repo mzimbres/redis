@@ -55,7 +55,15 @@ std::ostream& operator<<(std::ostream& os, usage const& u)
       << "Pushes received: " << u.pushes_received << "\n"
       << "Bytes received (response): " << u.response_bytes_received << "\n"
       << "Bytes received (push): " << u.push_bytes_received << "\n"
-      << "Bytes rotated: " << u.bytes_rotated;
+      << "Bytes rotated: " << u.bytes_rotated << "\n"
+      << "Execs: " << u.execs << "\n"
+      << "Coalesced: " << u.coalesced << "\n"
+      << "Socket reads/writes: " << u.socket_reads << "/" << u.socket_writes << "\n"
+      << "Time reading/writing: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(u.time_reading)
+         << "/"
+         << std::chrono::duration_cast<std::chrono::milliseconds>(u.time_writing);
+   ;
 
    return os;
 }

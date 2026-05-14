@@ -70,13 +70,17 @@ writer_action writer_fsm::resume(
             for (;;) {
                // Write what we can. If nothing has been written for the health check
                // interval, we consider the connection as failed
+               write_start_ = std::chrono::steady_clock::now();
                BOOST_REDIS_YIELD(
                   resume_point_,
                   1,
                   writer_action::write_some(st.cfg.health_check_interval))
 
+               auto const write_end = std::chrono::steady_clock::now();
+               auto const time_writing = write_end - write_start_;
+
                // Commit the received bytes. This accounts for partial success
-               bool finished = st.mpx.commit_write(bytes_written);
+               bool finished = st.mpx.commit_write(bytes_written, time_writing);
                log_debug(st.logger, "Writer task: ", bytes_written, " bytes written.");
 
                // Check for cancellations and translate error codes

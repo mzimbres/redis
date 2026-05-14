@@ -90,6 +90,8 @@ public:
 private:
    int resume_point_{0};
    std::pair<consume_result, std::size_t> res_{consume_result::needs_more, 0u};
+   std::chrono::time_point<std::chrono::steady_clock> read_start_;
+   std::chrono::time_point<std::chrono::steady_clock> read_end_;
 };
 
 }  // namespace boost::redis::detail

@@ -39,6 +39,24 @@ struct usage {
 
    /// Number of bytes rotated in the read buffer.
    std::size_t bytes_rotated = 0;
+
+   /// Total number of socket writes.
+   std::size_t socket_writes = 0;
+
+   /// Total time spent writing data to the socket.
+   std::chrono::steady_clock::duration time_writing = std::chrono::steady_clock::duration{0};
+
+   /// Total number of socket reads.
+   std::size_t socket_reads = 0;
+
+   /// Total time spent reading data from the socket.
+   std::chrono::steady_clock::duration time_reading = std::chrono::steady_clock::duration{0};
+
+   /// Total number of execs
+   std::size_t execs = 0;
+
+   /// Total number of coalesced requests (pipeline sizes)
+   std::size_t coalesced = 0;
 };
 
 }  // namespace boost::redis

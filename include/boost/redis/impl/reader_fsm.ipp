@@ -37,7 +37,9 @@ reader_fsm::action reader_fsm::resume(
          // Give it another health_check_interval for the response to arrive.
          // If we don't get anything in this time, consider the connection as dead
          log_debug(st.logger, "Reader task: issuing read");
+         read_start_ = std::chrono::steady_clock::now();
          BOOST_REDIS_YIELD(resume_point_, 1, action::read_some(2 * st.cfg.health_check_interval))
+         read_end_ = std::chrono::steady_clock::now();
 
          // Check for cancellations
          if (is_terminal_cancel(cancel_state)) {
@@ -59,7 +61,7 @@ reader_fsm::action reader_fsm::resume(
          }
 
          // Process the bytes read, even if there was an error
-         st.mpx.commit_read(bytes_read);
+         st.mpx.commit_read(bytes_read, read_end_ - read_start_);
 
          // Check for read errors
          if (ec) {

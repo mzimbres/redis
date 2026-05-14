@@ -85,6 +85,9 @@ public:
       system::error_code ec,
       std::size_t bytes_written,
       asio::cancellation_type_t cancel_state);
+
+private:
+   std::chrono::time_point<std::chrono::steady_clock> write_start_;
 };
 
 }  // namespace boost::redis::detail

@@ -11,6 +11,7 @@
 #include <boost/asio/error.hpp>
 #include <boost/assert.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <memory>
 
@@ -66,11 +67,16 @@ void multiplexer::cancel(std::shared_ptr<elem> const& ptr)
    }
 }
 
-bool multiplexer::commit_write(std::size_t bytes_written)
+bool
+multiplexer::commit_write(
+  std::size_t bytes_written,
+  std::chrono::steady_clock::duration time_writing)
 {
    BOOST_ASSERT(!cancel_run_called_);
    BOOST_ASSERT(bytes_written + write_offset_ <= write_buffer_.size());
 
+   usage_.socket_writes += 1;
+   usage_.time_writing += time_writing;
    usage_.bytes_sent += bytes_written;
    write_offset_ += bytes_written;
 
@@ -100,6 +106,7 @@ void multiplexer::add(std::shared_ptr<elem> const& info)
    BOOST_ASSERT(!info->is_abandoned());
 
    reqs_.push_back(info);
+   usage_.execs += 1;
 
    if (request_access::has_priority(info->get_request())) {
       auto rend = std::partition_point(std::rbegin(reqs_), std::rend(reqs_), [](auto const& e) {
@@ -192,7 +199,15 @@ auto multiplexer::get_prepared_read_buffer() noexcept -> read_buffer::span_type
    return read_buffer_.get_prepared();
 }
 
-void multiplexer::commit_read(std::size_t bytes_read) { read_buffer_.commit(bytes_read); }
+void
+multiplexer::commit_read(
+   std::size_t bytes_read,
+   std::chrono::steady_clock::duration time_reading)
+{
+   usage_.socket_reads += 1;
+   usage_.time_reading += time_reading;
+   read_buffer_.commit(bytes_read);
+}
 
 auto multiplexer::get_read_buffer_size() const noexcept -> std::size_t
 {
@@ -233,6 +248,7 @@ std::size_t multiplexer::prepare_write()
    write_offset_ = 0u;
 
    auto const d = std::distance(point, std::cend(reqs_));
+   usage_.coalesced += d;
    return static_cast<std::size_t>(d);
 }
 
