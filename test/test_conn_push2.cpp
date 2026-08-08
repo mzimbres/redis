@@ -795,6 +795,7 @@ struct test_pubsub_state_restoration_impl {
       req.push("CLIENT", "INFO");
       req.get_config().cancel_if_unresponded = false;
 
+      std::get<0>(resp_str).value() = {};
       conn.async_exec(req, resp_str, [this](error_code ec, std::size_t) {
          BOOST_TEST_EQ(ec, error_code());
 
