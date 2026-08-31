@@ -39,10 +39,11 @@ if (BOOST_REDIS_COROSIO_API)
   boost_redis_make_testable_example(corosio_timeouts     boost_redis_corosio_src)
   boost_redis_make_testable_example(corosio_sentinel     boost_redis_corosio_src)
 
-  boost_redis_make_example(corosio_subscriber  boost_redis_corosio_src)
-  boost_redis_make_example(corosio_streams     boost_redis_corosio_src)
-  boost_redis_make_example(corosio_echo_server boost_redis_corosio_src)
-  boost_redis_make_example(corosio_intro_tls   boost_redis_corosio_src)
+  boost_redis_make_example(corosio_subscriber   boost_redis_corosio_src)
+  boost_redis_make_example(corosio_streams      boost_redis_corosio_src)
+  boost_redis_make_example(corosio_echo_server  boost_redis_corosio_src)
+  boost_redis_make_example(corosio_resp3_server boost_redis_corosio_src)
+  boost_redis_make_example(corosio_intro_tls    boost_redis_corosio_src)
 endif()
 
 # We test the protobuf example only on gcc.
