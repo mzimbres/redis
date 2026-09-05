@@ -122,7 +122,7 @@ void test_request_needs_more()
    ret = mpx.consume(ec);
    BOOST_TEST_EQ(ret.first, consume_result::got_response);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "hello world"},
+      {type::blob_string, 0u, 0u, "hello world"},
    };
    check_response(item1.resp, expected);
 }
@@ -322,8 +322,8 @@ void test_push()
    BOOST_TEST_EQ(ret.second, 16u);
    const node expected[] = {
       {type::push,          2u, 0u, ""   },
-      {type::simple_string, 1u, 1u, "one"},
-      {type::simple_string, 1u, 1u, "two"},
+      {type::simple_string, 0u, 1u, "one"},
+      {type::simple_string, 0u, 1u, "two"},
    };
    check_response(resp, expected);
 }
@@ -350,8 +350,8 @@ void test_push_needs_more()
    BOOST_TEST_EQ(ret.second, 16u);
    const node expected[] = {
       {type::push,          2u, 0u, ""   },
-      {type::simple_string, 1u, 1u, "one"},
-      {type::simple_string, 1u, 1u, "two"},
+      {type::simple_string, 0u, 1u, "one"},
+      {type::simple_string, 0u, 1u, "two"},
    };
    check_response(resp, expected);
 }

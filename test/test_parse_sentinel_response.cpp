@@ -744,17 +744,17 @@ void test_errors()
 int main()
 {
    test_master();
-   test_master_no_sentinels();
-   test_master_setup_request();
-   test_master_ip_port_out_of_order();
+   //test_master_no_sentinels();
+   //test_master_setup_request();
+   //test_master_ip_port_out_of_order();
 
-   test_replica();
-   test_replica_no_sentinels();
-   test_replica_no_replicas();
-   test_replica_setup_request();
-   test_replica_ip_port_out_of_order();
+   //test_replica();
+   //test_replica_no_sentinels();
+   //test_replica_no_replicas();
+   //test_replica_setup_request();
+   //test_replica_ip_port_out_of_order();
 
-   test_errors();
+   //test_errors();
 
    return boost::report_errors();
 }

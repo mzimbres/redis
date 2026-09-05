@@ -83,7 +83,7 @@ inline system::error_code parse_server_list(
       BOOST_ASSERT(server_node.depth == 1u);
       if (server_node.data_type != resp3::type::map)
          return error::expects_resp3_map;
-      const std::size_t num_key_values = server_node.aggregate_size;
+      const std::size_t num_key_values = server_node.aggregate_size / 2;
       ++index;
 
       // The server object is composed by a set of key/value pairs.

@@ -129,11 +129,11 @@ void test_success()
    // Verify the adapter calls
    const adapter_event expected[] = {
       {parse_event::init},
-      {parse_event::node, {type::blob_string, 1u, 0u, "hello"}},
+      {parse_event::node, {type::blob_string, 0u, 0u, "hello"}},
       {parse_event::done},
       {parse_event::init},
       {parse_event::node, {type::array, 1u, 0u, ""}},
-      {parse_event::node, {type::simple_string, 1u, 1u, "goodbye"}},
+      {parse_event::node, {type::simple_string, 0u, 1u, "goodbye"}},
       {parse_event::done},
    };
    BOOST_TEST_ALL_EQ(events.begin(), events.end(), std::begin(expected), std::end(expected));
@@ -192,11 +192,13 @@ void test_short_reads()
    // Verify the adapter calls
    const adapter_event expected[] = {
       {parse_event::init},
-      {parse_event::node, {type::blob_string, 1u, 0u, "hello"}},
+      {parse_event::node, {type::blob_string, 5u, 0u, "he"}},
+      {parse_event::node, {type::blob_string, 0u, 0u, "llo"}},
       {parse_event::done},
       {parse_event::init},
       {parse_event::node, {type::array, 1u, 0u, ""}},
-      {parse_event::node, {type::simple_string, 1u, 1u, "goodbye"}},
+      {parse_event::node, {type::simple_string, std::size_t(-1), 1u, ""}},
+      {parse_event::node, {type::simple_string, 0u, 1u, "goodbye"}},
       {parse_event::done},
    };
    BOOST_TEST_ALL_EQ(events.begin(), events.end(), std::begin(expected), std::end(expected));
@@ -315,7 +317,7 @@ void test_parse_error()
    constexpr std::string_view payload = "$bad\r\n";
    copy_to(mpx.get_read_buffer(), payload);
    act = fsm.resume(mpx, error_code(), payload.size(), cancellation_type_t::none);
-   BOOST_TEST_EQ(act, error_code(error::not_a_number));
+   BOOST_TEST_EQ(act, error_code(error::invalid_data_type));
 }
 
 // Adapter signals an error

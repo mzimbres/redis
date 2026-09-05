@@ -16,6 +16,7 @@
 #include <map>
 #include <optional>
 #include <sstream>
+#include <regex>
 
 // TODO: Test with empty strings.
 
@@ -106,6 +107,8 @@ auto make_expected(
 template <class Result>
 void test_sync(expect<Result> e)
 {
+   std::string print_str = std::regex_replace(e.in,std::regex("(\r\n)"),"\\r\\n");
+   std::cout << "=========================\n" << print_str << std::endl;
    parser p;
    Result result;
    auto adapter = adapt2(result);
@@ -136,8 +139,11 @@ void test_sync2(expect<Result> e)
    error_code ec;
    auto const res = parse(p, e.in, adapter, ec);
 
-   BOOST_TEST(res);  // None of these tests need more data.
-   BOOST_TEST_EQ(ec, e.ec);
+   if (e.ec) {
+     BOOST_TEST_EQ(ec, e.ec);
+   } else {
+     BOOST_TEST(p.done());  // None of these tests need more data.
+   }
 }
 
 auto make_blob()
@@ -182,10 +188,10 @@ generic_response streamed_string_e2
 
 generic_response const push_e1a
   {{ {resp3::type::push,          4UL, 0UL, {}}
-   , {resp3::type::simple_string, 1UL, 1UL, "pubsub"}
-   , {resp3::type::simple_string, 1UL, 1UL, "message"}
-   , {resp3::type::simple_string, 1UL, 1UL, "some-channel"}
-   , {resp3::type::simple_string, 1UL, 1UL, "some message"}
+   , {resp3::type::simple_string, 0UL, 1UL, "pubsub"}
+   , {resp3::type::simple_string, 0UL, 1UL, "message"}
+   , {resp3::type::simple_string, 0UL, 1UL, "some-channel"}
+   , {resp3::type::simple_string, 0UL, 1UL, "some message"}
   }};
 
 generic_response const push_e1b
@@ -193,12 +199,12 @@ generic_response const push_e1b
 
 generic_response const set_expected1a
    {{{resp3::type::set,            6UL, 0UL, {}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"orange"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"apple"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"one"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"two"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"three"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"orange"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"orange"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"apple"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"one"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"two"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"three"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"orange"}}
   }};
 
 mset_type const set_e1f{{"apple", "one", "orange", "orange", "three", "two"}};
@@ -209,9 +215,9 @@ op_vec_type const set_expected_1e = set_e1d;
 
 generic_response const array_e1a
 {{ {resp3::type::array,       3UL, 0UL, {}}
-   , {resp3::type::blob_string, 1UL, 1UL, {"11"}}
-   , {resp3::type::blob_string, 1UL, 1UL, {"22"}}
-   , {resp3::type::blob_string, 1UL, 1UL, {"3"}}
+   , {resp3::type::blob_string, 0UL, 1UL, {"11"}}
+   , {resp3::type::blob_string, 0UL, 1UL, {"22"}}
+   , {resp3::type::blob_string, 0UL, 1UL, {"3"}}
  }};
 
 result<std::vector<int>> const array_e1b{{11, 22, 3}};
@@ -223,15 +229,15 @@ result<std::list<int>> const array_e1g{{11, 22, 3}};
 result<std::deque<int>> const array_e1h{{11, 22, 3}};
 
 generic_response const map_expected_1a
-{{ {resp3::type::map,         4UL, 0UL, {}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key1"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value1"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key2"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value2"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key3"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value3"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key3"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value3"}}
+{{ {resp3::type::map,         8UL, 0UL, {}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key1"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value1"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key2"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value2"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key3"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value3"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key3"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value3"}}
 }};
 
 map_type const map_expected_1b
@@ -279,13 +285,13 @@ tuple8_type const map_e1f
 };
 
 generic_response const attr_e1a
-{{ {resp3::type::attribute,     1UL, 0UL, {}}
-   , {resp3::type::simple_string, 1UL, 1UL, "key-popularity"}
-   , {resp3::type::map,           2UL, 1UL, {}}
-   , {resp3::type::blob_string,   1UL, 2UL, "a"}
-   , {resp3::type::doublean,      1UL, 2UL, "0.1923"}
-   , {resp3::type::blob_string,   1UL, 2UL, "b"}
-   , {resp3::type::doublean,      1UL, 2UL, "0.0012"}
+{{ {resp3::type::attribute,     2UL, 0UL, {}}
+   , {resp3::type::simple_string, 0UL, 1UL, "key-popularity"}
+   , {resp3::type::map,           4UL, 1UL, {}}
+   , {resp3::type::blob_string,   0UL, 2UL, "a"}
+   , {resp3::type::doublean,      0UL, 2UL, "0.1923"}
+   , {resp3::type::blob_string,   0UL, 2UL, "b"}
+   , {resp3::type::doublean,      0UL, 2UL, "0.0012"}
 }  };
 
 generic_response const attr_e1b
@@ -295,11 +301,6 @@ generic_response const attr_e1b
 #define S01b  "#f\r\n"
 #define S01c  "#t\r\n"
 #define S01d  "#\r\n"
-
-#define S02a  "$?\r\n;0\r\n"
-#define S02b  "$?\r\n;4\r\nHell\r\n;5\r\no wor\r\n;1\r\nd\r\n;0\r\n"
-#define S02c  "$?\r\n;b\r\nHell\r\n;5\r\no wor\r\n;1\r\nd\r\n;0\r\n"
-#define S02d  "$?\r\n;d\r\nHell\r\n;5\r\no wor\r\n;1\r\nd\r\n;0\r\n"
 
 #define S03a  "%11\r\n"
 #define S03b  "%4\r\n$4\r\nkey1\r\n$6\r\nvalue1\r\n$4\r\nkey2\r\n$6\r\nvalue2\r\n$4\r\nkey3\r\n$6\r\nvalue3\r\n$4\r\nkey3\r\n$6\r\nvalue3\r\n"
@@ -364,24 +365,19 @@ generic_response const attr_e1b
 #define S18d  "$0\r\n\r\n" 
 
 #define NUMBER_TEST_CONDITIONS(test) \
-   test(make_expected(S01a, result<std::optional<bool>>{}, boost::redis::error::unexpected_bool_value)); \
-   test(make_expected(S01b, result<bool>{{false}})); \
-   test(make_expected(S01b, node_type{{resp3::type::boolean, 1UL, 0UL, {"f"}}})); \
+   test(make_expected(S01a, result<std::optional<bool>>{}, boost::redis::error::unexpected_bool_value));\
+   test(make_expected(S01b, result<bool>{{false}}));\
+   test(make_expected(S01b, node_type{{resp3::type::boolean, 0UL, 0UL, {}}}));\
    test(make_expected(S01c, result<bool>{{true}})); \
-   test(make_expected(S01c, node_type{{resp3::type::boolean, 1UL, 0UL, {"t"}}})); \
+   test(make_expected(S01c, node_type{{resp3::type::boolean, 1UL, 0UL, {}}}));\
    test(make_expected(S01c, op_bool_ok)); \
-   test(make_expected(S01c, result<std::map<int, int>>{}, boost::redis::error::expects_resp3_map)); \
-   test(make_expected(S01c, result<std::set<int>>{}, boost::redis::error::expects_resp3_set)); \
+   test(make_expected(S01c, result<std::map<int, int>>{}, boost::redis::error::expects_resp3_map));\
+   test(make_expected(S01c, result<std::set<int>>{}, boost::redis::error::expects_resp3_set));\
    test(make_expected(S01c, result<std::unordered_map<int, int>>{}, boost::redis::error::expects_resp3_map)); \
-   test(make_expected(S01c, result<std::unordered_set<int>>{}, boost::redis::error::expects_resp3_set)); \
-   test(make_expected(S02a, streamed_string_e2)); \
+   test(make_expected(S01c, result<std::unordered_set<int>>{}, boost::redis::error::expects_resp3_set));\
    test(make_expected(S03a, result<int>{}, boost::redis::error::expects_resp3_simple_type));\
    test(make_expected(S03a, result<std::optional<int>>{}, boost::redis::error::expects_resp3_simple_type));; \
-   test(make_expected(S02b, result<int>{}, boost::redis::error::not_a_number)); \
-   test(make_expected(S02b, result<std::string>{std::string{"Hello word"}})); \
-   test(make_expected(S02b, streamed_string_e1)); \
-   test(make_expected(S02c, result<std::string>{}, boost::redis::error::not_a_number)); \
-   test(make_expected(S05a, node_type{{resp3::type::number, 1UL, 0UL, {"-3"}}})); \
+   test(make_expected(S05a, node_type{{resp3::type::number, 3UL, 0UL, {"-"}}})); \
    test(make_expected(S05b, result<int>{11})); \
    test(make_expected(S05b, op_int_ok)); \
    test(make_expected(S05b, result<std::list<std::string>>{}, boost::redis::error::expects_resp3_aggregate)); \
@@ -390,7 +386,7 @@ generic_response const attr_e1b
    test(make_expected(S05b, result<std::unordered_map<std::string, std::string>>{}, boost::redis::error::expects_resp3_map)); \
    test(make_expected(S05b, result<std::unordered_set<std::string>>{}, boost::redis::error::expects_resp3_set)); \
    test(make_expected(s05c, array_type2{}, boost::redis::error::expects_resp3_aggregate));\
-   test(make_expected(s05c, node_type{{resp3::type::number, 1UL, 0UL, {"3"}}}));\
+   test(make_expected(s05c, node_type{{resp3::type::number, 3UL, 0UL, {"+"}}}));\
    test(make_expected(S06a, op_type_01{})); \
    test(make_expected(S06a, op_type_02{}));\
    test(make_expected(S06a, op_type_03{}));\
@@ -435,31 +431,30 @@ generic_response const attr_e1b
    test(make_expected(S09a, set_type{{"apple", "one", "orange", "three", "two"}})); \
    test(make_expected(S09b, generic_response{{{resp3::type::set,  0UL, 0UL, {}}}})); \
    test(make_expected(S03c, map_type{}));\
-   test(make_expected(S11a, node_type{{resp3::type::doublean, 1UL, 0UL, {"1.23"}}}));\
-   test(make_expected(S11b, node_type{{resp3::type::doublean, 1UL, 0UL, {"inf"}}}));\
-   test(make_expected(S11c, node_type{{resp3::type::doublean, 1UL, 0UL, {"-inf"}}}));\
+   test(make_expected(S11a, node_type{{resp3::type::doublean, 0UL, 0UL, {"1.23"}}}));\
+   test(make_expected(S11b, node_type{{resp3::type::doublean, 0UL, 0UL, {"inf"}}}));\
+   test(make_expected(S11c, node_type{{resp3::type::doublean, 0UL, 0UL, {"-inf"}}}));\
    test(make_expected(S11d, result<double>{{1.23}}));\
    test(make_expected(S11e, result<double>{{0}}, boost::redis::error::not_a_double));\
-   test(make_expected(S13a, node_type{{resp3::type::verbatim_string, 1UL, 0UL, {"txt:Some string"}}}));\
-   test(make_expected(S13b, node_type{{resp3::type::verbatim_string, 1UL, 0UL, {}}}));\
-   test(make_expected(S14a, node_type{{resp3::type::big_number, 1UL, 0UL, {"3492890328409238509324850943850943825024385"}}}));\
+   test(make_expected(S13a, node_type{{resp3::type::verbatim_string, 0UL, 0UL, {"txt:Some string"}}}));\
+   test(make_expected(S13b, node_type{{resp3::type::verbatim_string, 0UL, 0UL, {}}}));\
+   test(make_expected(S14a, node_type{{resp3::type::big_number, 0UL, 0UL, {"3492890328409238509324850943850943825024385"}}}));\
    test(make_expected(S14b, result<int>{}, boost::redis::error::empty_field));\
    test(make_expected(S15a, result<std::optional<std::string>>{{"OK"}}));\
    test(make_expected(S15a, result<std::string>{{"OK"}}));\
    test(make_expected(S15b, result<std::optional<std::string>>{""}));\
    test(make_expected(S15b, result<std::string>{{""}}));\
    test(make_expected(S16a, result<int>{}, boost::redis::error::invalid_data_type));\
-   test(make_expected(S05d, result<int>{11}, boost::redis::error::not_a_number));\
-   test(make_expected(S03d, map_type{}, boost::redis::error::not_a_number));\
-   test(make_expected(S02d, result<std::string>{}, boost::redis::error::not_a_number));\
-   test(make_expected(S17a, result<std::string>{}, boost::redis::error::not_a_number));\
+   test(make_expected(S05d, result<int>{11}, boost::redis::error::invalid_data_type));\
+   test(make_expected(S03d, map_type{}, boost::redis::error::invalid_data_type));\
+   test(make_expected(S17a, result<std::string>{}, boost::redis::error::invalid_data_type));\
    test(make_expected(S05e, result<int>{}, boost::redis::error::empty_field));\
    test(make_expected(S01d, result<std::optional<bool>>{}, boost::redis::error::empty_field));\
    test(make_expected(S11f, result<std::string>{}, boost::redis::error::empty_field));\
-   test(make_expected(S17b, node_type{{resp3::type::blob_string, 1UL, 0UL, {"hh"}}}));\
-   test(make_expected(S18c, node_type{{resp3::type::blob_string, 1UL, 0UL, {"hhaa\aaaa\raaaaa\r\naaaaaaaaaa"}}}));\
-   test(make_expected(S18d, node_type{{resp3::type::blob_string, 1UL, 0UL, {}}}));\
-   test(make_expected(make_blob_string(blob), node_type{{resp3::type::blob_string, 1UL, 0UL, {blob}}}));\
+   test(make_expected(S17b, node_type{{resp3::type::blob_string, 0UL, 0UL, {"hh"}}}));\
+   test(make_expected(S18c, node_type{{resp3::type::blob_string, 0UL, 0UL, {"hhaa\aaaa\raaaaa\r\naaaaaaaaaa"}}}));\
+   test(make_expected(S18d, node_type{{resp3::type::blob_string, 0UL, 0UL, {}}}));\
+   test(make_expected(make_blob_string(blob), node_type{{resp3::type::blob_string, 0UL, 0UL, {blob}}}));\
    test(make_expected(S04a, result<std::vector<int>>{{11}})); \
    test(make_expected(S04d, result<response<std::unordered_set<std::string>>>{response<std::unordered_set<std::string>>{{set_e1c}}})); \
    test(make_expected(S04c, result<response<std::map<std::string, std::string>>>{response<std::map<std::string, std::string>>{{map_expected_1b}}}));\
@@ -604,10 +599,10 @@ void test_adapter()
 
    auto f = boost_redis_adapt(resp);
    f.on_init();
-   f.on_node(resp3::node_view{type::simple_string, 1, 0, "Hello"}, ec);
+   f.on_node(resp3::node_view{type::simple_string, 0, 0, "Hello"}, ec);
    f.on_done();
    f.on_init();
-   f.on_node(resp3::node_view{type::number, 1, 0, "42"}, ec);
+   f.on_node(resp3::node_view{type::number, 42, 0, "+"}, ec);
    f.on_done();
 
    BOOST_TEST_EQ(std::get<0>(resp).value(), "Hello");

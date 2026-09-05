@@ -34,7 +34,7 @@ void test_success()
 
    BOOST_TEST(resp.has_value());
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
    BOOST_TEST_ALL_EQ(resp->begin(), resp->end(), expected_nodes.begin(), expected_nodes.end());
 }
