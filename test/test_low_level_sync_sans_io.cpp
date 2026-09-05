@@ -209,7 +209,7 @@ void test_issue_233_optional_array_with_null()
 void test_check_counter_adapter()
 {
    using boost::redis::any_adapter;
-   using boost::redis::resp3::parse;
+   using boost::redis::resp3::write;
    using boost::redis::resp3::parser;
    using boost::redis::resp3::node_view;
    using boost::system::error_code;
@@ -231,19 +231,19 @@ void test_check_counter_adapter()
    error_code ec;
    parser p;
 
-   auto const ret1 = parse(p, RESP3_SET_PART1, wrapped, ec);
-   auto const ret2 = parse(p, RESP3_SET_PART1 RESP3_SET_PART2, wrapped, ec);
-   auto const ret3 = parse(p, RESP3_SET_PART1 RESP3_SET_PART2 RESP3_SET_PART3, wrapped, ec);
-   auto const ret4 = parse(
+   auto const ret1 = write(p, RESP3_SET_PART1, wrapped, ec);
+   auto const ret2 = write(p, RESP3_SET_PART1 RESP3_SET_PART2, wrapped, ec);
+   auto const ret3 = write(p, RESP3_SET_PART1 RESP3_SET_PART2 RESP3_SET_PART3, wrapped, ec);
+   auto const ret4 = write(
       p,
       RESP3_SET_PART1 RESP3_SET_PART2 RESP3_SET_PART3 RESP3_SET_PART4,
       wrapped,
       ec);
 
-   BOOST_TEST(!ret1);
-   BOOST_TEST(!ret2);
-   BOOST_TEST(!ret3);
-   BOOST_TEST(ret4);
+   BOOST_TEST(!ec && ret1 == 0);
+   BOOST_TEST(!ec && ret2 == 0);
+   BOOST_TEST(!ec && ret3 == 0);
+   BOOST_TEST(!ec && ret4 != 0);
 
    BOOST_TEST_EQ(init, 1);
    BOOST_TEST_EQ(node, 7);

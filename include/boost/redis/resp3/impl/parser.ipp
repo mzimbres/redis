@@ -26,6 +26,7 @@ parser::parser() { reset(); }
 
 void parser::reset()
 {
+   header_ = {};
    depth_ = 0;
    sizes_ = default_sizes;
    bulk_length_ = default_bulk_length;
@@ -49,7 +50,7 @@ void parser::commit_elem() noexcept
    }
 }
 
-auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> parser::result
+auto parser::write(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
    switch (bulk_) {
       case type::invalid:
@@ -60,13 +61,13 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
 
          auto const t = to_type(view.at(consumed_));
          auto const content = view.substr(consumed_ + 1, pos - 1 - consumed_);
-         auto const ret = consume_impl(t, content, ec);
+         auto const ret = write_impl(t, content, ec);
          if (ec)
             return {};
 
          consumed_ = pos + 2;
          if (!bulk_expected())
-            return ret;
+            return {consumed_, ret};
       }
          [[fallthrough]];
 
@@ -82,17 +83,16 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
          commit_elem();
 
          consumed_ += span;
-         return ret;
+         return {consumed_, ret};
       }
    }
 }
 
-auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
+auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
    -> parser::node_type
 {
    BOOST_ASSERT(!bulk_expected());
 
-   node_type ret;
    switch (t) {
       case type::streamed_string_part:
       {
@@ -101,12 +101,14 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
             return {};
 
          if (bulk_length_ == 0) {
-            ret = {type::streamed_string_part, 1, depth_, {}};
+            auto const ret = node_type{type::streamed_string_part, 1, depth_, {}};
             sizes_[depth_] = 1;  // We are done.
             bulk_ = type::invalid;
             commit_elem();
+            return ret;
          } else {
             bulk_ = type::streamed_string_part;
+            return {};
          }
       } break;
       case type::blob_error:
@@ -119,13 +121,14 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
             // infinite length. When the streaming is done the server
             // is supposed to send a part with length 0.
             sizes_[++depth_] = (std::numeric_limits<std::size_t>::max)();
-            ret = {type::streamed_string, 0, depth_, {}};
+            return {type::streamed_string, 0, depth_, {}};
          } else {
             to_int(bulk_length_, elem, ec);
             if (ec)
                return {};
 
             bulk_ = t;
+            return {};
          }
       } break;
       case type::boolean:
@@ -140,8 +143,9 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
             return {};
          }
 
-         ret = {t, 1, depth_, elem};
+         node_type const ret{t, 1, depth_, elem};
          commit_elem();
+         return ret;
       } break;
       case type::doublean:
       case type::big_number:
@@ -157,8 +161,9 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
       case type::simple_string:
       case type::null:
       {
-         ret = {t, 1, depth_, elem};
+         node_type const ret = {t, 1, depth_, elem};
          commit_elem();
+         return ret;
       } break;
       case type::push:
       case type::set:
@@ -171,7 +176,7 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
          if (ec)
             return {};
 
-         ret = {t, l, depth_, {}};
+         node_type const ret = {t, l, depth_, {}};
          if (l == 0) {
             commit_elem();
          } else {
@@ -184,6 +189,7 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
 
             sizes_[depth_] = l * element_multiplicity(t);
          }
+         return ret;
       } break;
       default:
       {
@@ -191,8 +197,6 @@ auto parser::consume_impl(type t, std::string_view elem, system::error_code& ec)
          return {};
       }
    }
-
-   return ret;
 }
 
 bool parser::is_parsing() const noexcept

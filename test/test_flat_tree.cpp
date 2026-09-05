@@ -69,10 +69,10 @@ bool parse_checked(
 {
    error_code ec;
    auto adapter = adapt2(to);
-   bool done = boost::redis::resp3::parse(p, data, adapter, ec);
+   bool done = boost::redis::resp3::write(p, data, adapter, ec);
    if (!BOOST_TEST_EQ(ec, error_code{}))
       std::cerr << "Called from " << loc << std::endl;
-   return done;
+   return p.done();
 }
 
 void check_nodes(

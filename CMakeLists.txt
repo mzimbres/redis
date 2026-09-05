@@ -31,6 +31,7 @@ target_link_libraries(boost_redis
     Boost::mp11
     Boost::system
     Boost::throw_exception
+    Boost::static_string
     Threads::Threads
     OpenSSL::Crypto
     OpenSSL::SSL

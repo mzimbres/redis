@@ -69,7 +69,7 @@ exec_one_action exec_one_fsm::resume(
          mpx.commit_read(bytes_transferred);
 
          // Consume the data until we run out or all the responses have been read
-         while (resp3::parse(parser_, mpx.get_read_buffer().get_commited(), adapter_, ec)) {
+         while (resp3::write(parser_, mpx.get_read_buffer().get_commited(), adapter_, ec) != 0) {
             // Check for errors
             if (ec)
                return ec;
@@ -83,6 +83,9 @@ exec_one_action exec_one_fsm::resume(
             if (--remaining_responses_ == 0u)
                return system::error_code{};
          }
+         // TODO: fix the loop above.
+         if (ec)
+            return ec;
       }
    }
 

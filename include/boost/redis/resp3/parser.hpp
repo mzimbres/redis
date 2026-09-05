@@ -12,21 +12,35 @@
 #include <boost/system/error_code.hpp>
 
 #include <array>
+#include <limits>
 #include <optional>
 #include <string_view>
+#include <boost/static_string.hpp>
 
 namespace boost::redis::resp3 {
 
 class parser {
 public:
    using node_type = basic_node<std::string_view>;
-   using result = std::optional<node_type>;
+
+   struct result {
+     // When this number is zero more data is needed.
+     std::size_t consumed = 0;
+
+     node_type node;
+   };
+
+   static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
+   using header_type = boost::static_string<1 + uint64_digits + 2>;
 
    static constexpr std::size_t max_embedded_depth = 5;
    static constexpr std::string_view sep = "\r\n";
 
 private:
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
+   
+   // Stores a RESP3 header in the form "t<num>\r\n"
+   header_type header_{};
 
    // sizes_[0] = 2 because the sentinel must be more than 1.
    static constexpr sizes_type default_sizes = {
@@ -55,7 +69,7 @@ private:
    std::size_t consumed_;
 
    // Returns the number of bytes that have been consumed.
-   auto consume_impl(type t, std::string_view elem, system::error_code& ec) -> node_type;
+   auto write_impl(type t, std::string_view elem, system::error_code& ec) -> node_type;
 
    void commit_elem() noexcept;
 
@@ -76,18 +90,17 @@ public:
 
    auto get_consumed() const noexcept -> std::size_t;
 
-   auto consume(std::string_view view, system::error_code& ec) noexcept -> result;
+   auto write(std::string_view view, system::error_code& ec) noexcept -> result;
 
    void reset();
 
    bool is_parsing() const noexcept;
 };
 
-// Returns false if more data is needed. If true is returned the
-// parser is either done or an error occured, that can be checked on
-// ec.
+// Returns the number of bytes consumed from the buffer, where zero means more
+// data is needed.
 template <class Adapter>
-bool parse(parser& p, std::string_view const& msg, Adapter& adapter, system::error_code& ec)
+std::size_t write(parser& p, std::string_view const& msg, Adapter& adapter, system::error_code& ec)
 {
    // This if could be avoid with a state machine that jumps into the
    // correct position.
@@ -95,20 +108,20 @@ bool parse(parser& p, std::string_view const& msg, Adapter& adapter, system::err
       adapter.on_init();
 
    while (!p.done()) {
-      auto const res = p.consume(msg, ec);
+      auto const res = p.write(msg, ec);
       if (ec)
-         return true;
+         return 0;
 
-      if (!res)
-         return false;
+      if (res.consumed == 0u)
+         return 0;
 
-      adapter.on_node(res.value(), ec);
+      adapter.on_node(res.node, ec);
       if (ec)
-         return true;
+         return 0;
    }
 
    adapter.on_done();
-   return true;
+   return p.get_consumed();
 }
 
 }  // namespace boost::redis::resp3
