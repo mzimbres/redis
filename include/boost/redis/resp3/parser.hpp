@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2024 Marcelo Zimbres Silva (mzimbres@gmail.com)
+/* Copyright (c) Marcelo Zimbres Silva (mzimbres@gmail.com)
  *
  * Distributed under the Boost Software License, Version 1.0. (See
  * accompanying file LICENSE.txt)
@@ -8,12 +8,16 @@
 #define BOOST_REDIS_RESP3_PARSER_HPP
 
 #include <boost/redis/resp3/node.hpp>
+#include <boost/redis/resp3/detail/simple_parser.hpp>
+#include <boost/redis/error.hpp>
 
 #include <boost/system/error_code.hpp>
 
 #include <array>
+#include <limits>
 #include <optional>
 #include <string_view>
+#include <cctype>
 
 namespace boost::redis::resp3 {
 
@@ -27,12 +31,13 @@ public:
 
 private:
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
+   
+   resp3::detail::simple_parser header_{};
 
    // sizes_[0] = 2 because the sentinel must be more than 1.
    static constexpr sizes_type default_sizes = {
       {2, 1, 1, 1, 1, 1}
    };
-   static constexpr auto default_bulk_length = static_cast<std::size_t>(-1);
 
    // The current depth. Simple data types will have depth 0, whereas
    // the elements of aggregates will have depth 1. Embedded types
@@ -44,28 +49,10 @@ private:
    // different from 1.
    sizes_type sizes_;
 
-   // Contains the length expected in the next bulk read.
-   std::size_t bulk_length_;
-
-   // The type of the next bulk. Contains type::invalid if no bulk is
-   // expected.
-   type bulk_;
-
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
 
-   // Returns the number of bytes that have been consumed.
-   auto consume_impl(type t, std::string_view elem, system::error_code& ec) -> node_type;
-
    void commit_elem() noexcept;
-
-   // The bulk type expected in the next read. If none is expected
-   // returns type::invalid.
-   [[nodiscard]]
-   auto bulk_expected() const noexcept -> bool
-   {
-      return bulk_ != type::invalid;
-   }
 
 public:
    parser();
@@ -81,6 +68,8 @@ public:
    void reset();
 
    bool is_parsing() const noexcept;
+
+   void rewind();
 };
 
 // Returns false if more data is needed. If true is returned the

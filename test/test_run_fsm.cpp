@@ -701,7 +701,7 @@ void test_setup_request_other_error()
    read(fix.st.mpx, "*malformed\r\n");
    error_code ec;
    auto res = fix.st.mpx.consume(ec);
-   BOOST_TEST_EQ(ec, error::not_a_number);
+   BOOST_TEST_EQ(ec, error::invalid_data_type);
    BOOST_TEST(res.first == detail::consume_result::got_response);
 
    // This will cause the writer to exit
@@ -715,7 +715,7 @@ void test_setup_request_other_error()
       // clang-format off
       {logger::level::info, "Trying to connect to Redis server at 127.0.0.1:6379 (TLS disabled)"},
       {logger::level::info, "Connected to Redis server at 127.0.0.1:6379 (TLS disabled)"        },
-      {logger::level::err,  "Setup request execution failed: Can't convert string to number (maybe forgot to upgrade to RESP3?). [boost.redis:2]" },
+      {logger::level::err,  "Setup request execution failed: Invalid resp3 type. [boost.redis:1]" },
       // clang-format on
    });
 }

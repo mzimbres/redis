@@ -145,7 +145,7 @@ public:
    void count(resp3::basic_node<String> const& elem)
    {
       if (elem.depth == 1 && is_aggregate(elem.data_type)) {
-         aggregate_size_ = element_multiplicity(elem.data_type) * elem.aggregate_size;
+         aggregate_size_ = elem.aggregate_size;
       }
 
       if (aggregate_size_ == 0) {
@@ -185,9 +185,7 @@ public:
       using std::visit;
 
       if (elem.depth == 0) {
-         auto const multiplicity = element_multiplicity(elem.data_type);
-         auto const real_aggr_size = elem.aggregate_size * multiplicity;
-         if (real_aggr_size != std::tuple_size<Tuple>::value)
+         if (elem.aggregate_size != std::tuple_size<Tuple>::value)
             ec = redis::error::incompatible_size;
 
          return;

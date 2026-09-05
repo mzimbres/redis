@@ -59,9 +59,26 @@ struct converter<T, true> {
    template <class String>
    static void apply(T& i, resp3::basic_node<String> const& node, system::error_code& ec)
    {
-      auto const res = std::from_chars(node.value.data(), node.value.data() + node.value.size(), i);
-      if (res.ec != std::errc())
-         ec = redis::error::not_a_number;
+      switch (node.data_type) {
+         case resp3::type::number:
+         {
+            i = node.aggregate_size;
+            if (node.value == "-") {
+               if constexpr (std::is_signed<T>::value) {
+                  i *= -1;
+               } else {
+                  ec = redis::error::not_a_number;
+                  return;
+               }
+            }
+         } break;
+         default:
+         {
+            auto const res = std::from_chars(node.value.data(), node.value.data() + node.value.size(), i);
+            if (res.ec != std::errc())
+               ec = redis::error::not_a_number;
+         }
+      }
    }
 };
 
@@ -70,7 +87,7 @@ struct converter<bool, false> {
    template <class String>
    static void apply(bool& t, resp3::basic_node<String> const& node, system::error_code&)
    {
-      t = *node.value.data() == 't';
+      t = node.aggregate_size == 1;
    }
 };
 
@@ -143,11 +160,12 @@ void boost_redis_from_bulk(T& t, resp3::basic_node<String> const& node, system::
 template <class Result>
 class general_aggregate {
 private:
-   Result* result_;
+   Result* res_;
+   bool next_is_append_ = false;
 
 public:
    explicit general_aggregate(Result* c = nullptr)
-   : result_(c)
+   : res_(c)
    { }
 
    void on_init() { }
@@ -156,24 +174,54 @@ public:
    template <class String>
    void on_node(resp3::basic_node<String> const& nd, system::error_code&)
    {
-      BOOST_ASSERT_MSG(!!result_, "Unexpected null pointer");
+      BOOST_ASSERT_MSG(!!res_, "Unexpected null pointer");
+
       switch (nd.data_type) {
          case resp3::type::blob_error:
          case resp3::type::simple_error:
-            *result_ = error{
+         {
+            // TODO: Append data instead of overwrite.
+            *res_ = error{
                nd.data_type,
                std::string{std::cbegin(nd.value), std::cend(nd.value)}
             };
-            break;
-         default:
-            if (result_->has_value()) {
-               (**result_).push_back({
+         } break;
+         //case resp3::type::attribute:
+         case resp3::type::streamed_string_part:
+         case resp3::type::doublean:
+         case resp3::type::big_number:
+         case resp3::type::verbatim_string:
+         case resp3::type::simple_string:
+         case resp3::type::blob_string:
+         {
+            if (!res_->has_value())
+               return;
+
+            if (next_is_append_) {
+               res_->value().back().value.append(nd.value.begin(), nd.value.end());
+            } else {
+               res_->value().push_back({
                   nd.data_type,
-                  nd.aggregate_size,
+                  0u,
                   nd.depth,
                   std::string{std::cbegin(nd.value), std::cend(nd.value)}
                });
             }
+
+            next_is_append_ = nd.aggregate_size != 0u;
+         } break;
+         default:
+         {
+            if (!res_->has_value())
+               return;
+
+            res_->value().push_back({
+               nd.data_type,
+               nd.aggregate_size,
+               nd.depth,
+               std::string{std::cbegin(nd.value), std::cend(nd.value)}
+            });
+         }
       }
    }
 };
@@ -345,8 +393,6 @@ public:
          return;
       }
 
-      BOOST_ASSERT(nd.aggregate_size == 1);
-
       if (nd.depth < 1) {
          ec = redis::error::expects_resp3_set;
          return;
@@ -374,12 +420,10 @@ public:
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (is_aggregate(nd.data_type)) {
-         if (element_multiplicity(nd.data_type) != 2)
+         if (nd.data_type != resp3::type::map)
             ec = redis::error::expects_resp3_map;
          return;
       }
-
-      BOOST_ASSERT(nd.aggregate_size == 1);
 
       if (nd.depth < 1) {
          ec = redis::error::expects_resp3_map;
@@ -412,8 +456,7 @@ public:
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (is_aggregate(nd.data_type)) {
-         auto const m = element_multiplicity(nd.data_type);
-         result.reserve(result.size() + m * nd.aggregate_size);
+         result.reserve(result.size() + nd.aggregate_size);
       } else {
          result.push_back({});
          boost_redis_from_bulk(result.back(), nd, ec);
@@ -441,7 +484,7 @@ public:
             return;
          }
 
-         if (result.size() != nd.aggregate_size * element_multiplicity(nd.data_type)) {
+         if (result.size() != nd.aggregate_size) {
             ec = redis::error::incompatible_size;
             return;
          }
@@ -451,7 +494,6 @@ public:
             return;
          }
 
-         BOOST_ASSERT(nd.aggregate_size == 1);
          boost_redis_from_bulk(result.at(i_), nd, ec);
       }
 
@@ -470,7 +512,6 @@ struct list_impl {
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (!is_aggregate(nd.data_type)) {
-         BOOST_ASSERT(nd.aggregate_size == 1);
          if (nd.depth < 1) {
             ec = redis::error::expects_resp3_aggregate;
             return;

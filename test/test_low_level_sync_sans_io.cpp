@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2025 Marcelo Zimbres Silva (mzimbres@gmail.com)
+/* Copyright (c) Marcelo Zimbres Silva (mzimbres@gmail.com)
  *
  * Distributed under the Boost Software License, Version 1.0. (See
  * accompanying file LICENSE.txt)
@@ -6,8 +6,6 @@
 
 #include <boost/redis/adapter/adapt.hpp>
 #include <boost/redis/adapter/any_adapter.hpp>
-#include <boost/redis/detail/read_buffer.hpp>
-#include <boost/redis/request.hpp>
 #include <boost/redis/resp3/node.hpp>
 #include <boost/redis/resp3/serialization.hpp>
 #include <boost/redis/resp3/type.hpp>
@@ -246,7 +244,7 @@ void test_check_counter_adapter()
    BOOST_TEST(ret4);
 
    BOOST_TEST_EQ(init, 1);
-   BOOST_TEST_EQ(node, 7);
+   BOOST_TEST_EQ(node, 10);
    BOOST_TEST_EQ(done, 1);
 }
 
