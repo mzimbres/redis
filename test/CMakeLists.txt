@@ -53,6 +53,7 @@ boost_redis_make_test(test_read_buffer)
 boost_redis_make_test(test_subscription_tracker)
 boost_redis_make_test(test_push_parser)
 boost_redis_make_test(test_config)
+boost_redis_make_test(test_header_parser)
 
 # Tests that require a real Redis server
 if (BOOST_REDIS_INTEGRATION_TESTS)

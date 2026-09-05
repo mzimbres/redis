@@ -83,10 +83,10 @@ resp3::flat_tree tree_from_resp3(const std::vector<std::string_view>& msgs, sour
    for (std::string_view resp : msgs) {
       resp3::parser p;
       system::error_code ec;
-      bool done = resp3::parse(p, resp, adapter, ec);
-      if (!BOOST_TEST(done))
-         std::cerr << "Called from " << loc << std::endl;
+      bool const n = resp3::write(p, resp, adapter, ec);
       if (!BOOST_TEST_EQ(ec, system::error_code()))
+         std::cerr << "Called from " << loc << std::endl;
+      if (!BOOST_TEST(n != 0))
          std::cerr << "Called from " << loc << std::endl;
    }
 

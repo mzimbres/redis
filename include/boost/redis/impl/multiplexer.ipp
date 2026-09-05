@@ -130,7 +130,8 @@ consume_result multiplexer::consume_impl(system::error_code& ec)
       on_push_ = is_next_push(data);
 
    if (on_push_) {
-      if (!resp3::parse(parser_, data, receive_adapter_, ec))
+      auto const n = resp3::write(parser_, data, receive_adapter_, ec);
+      if (n == 0u)
          return consume_result::needs_more;
 
       return consume_result::got_push;
@@ -141,14 +142,15 @@ consume_result multiplexer::consume_impl(system::error_code& ec)
    BOOST_ASSERT(reqs_.front()->get_remaining_responses() != 0);
    BOOST_ASSERT(!reqs_.front()->is_waiting());
 
-   if (!resp3::parse(parser_, data, reqs_.front()->get_adapter(), ec))
-      return consume_result::needs_more;
-
+   auto const n = resp3::write(parser_, data, reqs_.front()->get_adapter(), ec);
    if (ec) {
       reqs_.front()->notify_error(ec);
       reqs_.pop_front();
       return consume_result::got_response;
    }
+
+   if (n == 0u)
+      return consume_result::needs_more;
 
    reqs_.front()->commit_response(parser_.get_consumed());
    if (reqs_.front()->get_remaining_responses() == 0) {
