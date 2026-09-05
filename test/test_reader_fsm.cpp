@@ -298,15 +298,13 @@ void test_parse_error()
 
    // Deliver the data
    act = fsm.resume(fix.st, payload.size(), {}, cancellation_type_t::none);
-   BOOST_TEST_EQ(act, error_code{error::not_a_number});
+   BOOST_TEST_EQ(act, error_code{error::invalid_data_type});
 
    // Check logging
    fix.check_log({
       {logger::level::debug, "Reader task: issuing read"},
       {logger::level::debug, "Reader task: 4 bytes read"},
-      {logger::level::err,
-       "Error processing message: Can't convert string to number (maybe forgot to "
-       "upgrade to RESP3?). [boost.redis:2]"            },
+      {logger::level::err,   "Error processing message: Invalid resp3 type. [boost.redis:1]" },
    });
 }
 

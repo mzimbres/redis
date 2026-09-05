@@ -39,12 +39,14 @@ void test_success()
    bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to the SELECT command
    p.reset();
    done = resp3::parse(p, "+OK\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // No diagnostic
    BOOST_TEST_EQ(st.diagnostic, "");
@@ -82,6 +84,7 @@ void test_blob_error()
    bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to select contains an error
    p.reset();
@@ -106,6 +109,7 @@ void test_null()
    bool done = resp3::parse(p, "_\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // No diagnostic
    BOOST_TEST_EQ(st.diagnostic, "");
@@ -138,18 +142,21 @@ void test_sentinel_master()
    bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to the SELECT command
    p.reset();
    done = resp3::parse(p, "+OK\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
    done = resp3::parse(p, role_master_response, adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // No diagnostic
    BOOST_TEST_EQ(st.diagnostic, "");
@@ -173,12 +180,14 @@ void test_sentinel_replica()
    bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
    done = resp3::parse(p, role_replica_response, adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // No diagnostic
    BOOST_TEST_EQ(st.diagnostic, "");
@@ -202,6 +211,7 @@ void test_sentinel_role_check_failed_master()
    bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
@@ -231,6 +241,7 @@ void test_sentinel_role_check_failed_replica()
    bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
    BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
+   BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();

@@ -73,38 +73,6 @@ void test_ints()
    BOOST_TEST_EQ(std::get<10>(resp).value(), 42u);
 }
 
-void test_bools()
-{
-   // Setup
-   net::io_context ioc;
-   auto conn = std::make_shared<connection>(ioc);
-   run(conn);
-
-   // Get a boolean
-   request req;
-   req.push("SET", "key_true", "t");
-   req.push("SET", "key_false", "f");
-   req.push("GET", "key_true");
-   req.push("GET", "key_false");
-
-   response<ignore_t, ignore_t, bool, bool> resp;
-
-   bool finished = false;
-
-   conn->async_exec(req, resp, [conn, &finished](error_code ec, std::size_t) {
-      finished = true;
-      BOOST_TEST_EQ(ec, error_code());
-      conn->cancel();
-   });
-
-   // Run the operations
-   ioc.run_for(test_timeout);
-
-   // Check
-   BOOST_TEST(std::get<2>(resp).value());
-   BOOST_TEST_NOT(std::get<3>(resp).value());
-}
-
 void test_floating_points()
 {
    // Setup
@@ -140,7 +108,6 @@ void test_floating_points()
 int main()
 {
    test_ints();
-   test_bools();
    test_floating_points();
 
    return boost::report_errors();

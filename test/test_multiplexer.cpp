@@ -122,7 +122,7 @@ void test_request_needs_more()
    ret = mpx.consume(ec);
    BOOST_TEST_EQ(ret.first, consume_result::got_response);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "hello world"},
+      {type::blob_string, 0u, 0u, "hello world"},
    };
    check_response(item1.resp, expected);
 }
@@ -322,8 +322,8 @@ void test_push()
    BOOST_TEST_EQ(ret.second, 16u);
    const node expected[] = {
       {type::push,          2u, 0u, ""   },
-      {type::simple_string, 1u, 1u, "one"},
-      {type::simple_string, 1u, 1u, "two"},
+      {type::simple_string, 0u, 1u, "one"},
+      {type::simple_string, 0u, 1u, "two"},
    };
    check_response(resp, expected);
 }
@@ -350,8 +350,8 @@ void test_push_needs_more()
    BOOST_TEST_EQ(ret.second, 16u);
    const node expected[] = {
       {type::push,          2u, 0u, ""   },
-      {type::simple_string, 1u, 1u, "one"},
-      {type::simple_string, 1u, 1u, "two"},
+      {type::simple_string, 0u, 1u, "one"},
+      {type::simple_string, 0u, 1u, "two"},
    };
    check_response(resp, expected);
 }
@@ -374,7 +374,7 @@ void test_push_heuristics_no_request()
    BOOST_TEST_EQ(ret.first, consume_result::got_push);
    BOOST_TEST_EQ(ret.second, 14u);
    const node expected[] = {
-      {type::simple_string, 1u, 0u, "Hello world"},
+      {type::simple_string, 0u, 0u, "Hello world"},
    };
    check_response(resp, expected);
 }
@@ -401,7 +401,7 @@ void test_push_heuristics_request_waiting()
    BOOST_TEST_EQ(ret.first, consume_result::got_push);
    BOOST_TEST_EQ(ret.second, 14u);
    const node expected[] = {
-      {type::simple_string, 1u, 0u, "Hello world"},
+      {type::simple_string, 0u, 0u, "Hello world"},
    };
    check_response(resp, expected);
 }
@@ -461,8 +461,8 @@ void test_mix_responses_pushes()
    BOOST_TEST_EQ(ret.second, 16u);
    std::vector<node> expected{
       {type::push,          2u, 0u, ""   },
-      {type::simple_string, 1u, 1u, "one"},
-      {type::simple_string, 1u, 1u, "two"},
+      {type::simple_string, 0u, 1u, "one"},
+      {type::simple_string, 0u, 1u, "two"},
    };
    check_response(push_resp, expected);
    BOOST_TEST_NOT(item1.done);
@@ -475,7 +475,7 @@ void test_mix_responses_pushes()
    BOOST_TEST_EQ(ret.first, consume_result::got_response);
    BOOST_TEST_EQ(ret.second, 18u);
    expected = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item1.resp, expected);
    BOOST_TEST(item1.done);
@@ -489,11 +489,11 @@ void test_mix_responses_pushes()
    BOOST_TEST_EQ(ret.second, 19u);
    expected = {
       {type::push,          2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "one"  },
-      {type::simple_string, 1u, 1u, "two"  },
+      {type::simple_string, 0u, 1u, "one"  },
+      {type::simple_string, 0u, 1u, "two"  },
       {type::push,          2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "other"},
-      {type::simple_string, 1u, 1u, "push" },
+      {type::simple_string, 0u, 1u, "other"},
+      {type::simple_string, 0u, 1u, "push" },
    };
    check_response(push_resp, expected);
    BOOST_TEST(item1.done);
@@ -506,7 +506,7 @@ void test_mix_responses_pushes()
    BOOST_TEST_EQ(ret.first, consume_result::got_response);
    BOOST_TEST_EQ(ret.second, 14u);
    expected = {
-      {type::blob_string, 1u, 0u, "Response"},
+      {type::blob_string, 0u, 0u, "Response"},
    };
    check_response(item2.resp, expected);
    BOOST_TEST(item1.done);
@@ -546,7 +546,7 @@ void test_cancel_waiting()
    BOOST_TEST_EQ(res.first, consume_result::got_response);
    BOOST_TEST(item2->done);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2->resp, expected);
 }
@@ -584,7 +584,7 @@ void test_cancel_staged()
    BOOST_TEST_EQ(res.first, consume_result::got_response);
    BOOST_TEST(item2->done);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2->resp, expected);
 }
@@ -616,7 +616,7 @@ void test_cancel_staged_command_without_response()
    BOOST_TEST_EQ(res.first, consume_result::got_response);
    BOOST_TEST(item2->done);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2->resp, expected);
 }
@@ -652,7 +652,7 @@ void test_cancel_written()
    BOOST_TEST_EQ(res.first, consume_result::got_response);
    BOOST_TEST(item2->done);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2->resp, expected);
 }
@@ -715,7 +715,7 @@ void test_cancel_written_half_parsed_response()
    BOOST_TEST_EQ(res.first, consume_result::got_response);
    BOOST_TEST(item2->done);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2->resp, expected);
 }
@@ -770,7 +770,7 @@ void test_cancel_written_null_error()
    BOOST_TEST_EQ(res.first, consume_result::got_response);
    BOOST_TEST(item2->done);
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2->resp, expected);
 }
@@ -967,7 +967,7 @@ void test_reset()
    BOOST_TEST_EQ(ret.first, consume_result::got_response);
    BOOST_TEST_EQ(ret.second, response_buffer.size());
    const node expected[] = {
-      {type::blob_string, 1u, 0u, "Hello world"},
+      {type::blob_string, 0u, 0u, "Hello world"},
    };
    check_response(item2.resp, expected);
    BOOST_TEST(item2.done);

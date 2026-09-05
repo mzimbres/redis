@@ -59,9 +59,26 @@ struct converter<T, true> {
    template <class String>
    static void apply(T& i, resp3::basic_node<String> const& node, system::error_code& ec)
    {
-      auto const res = std::from_chars(node.value.data(), node.value.data() + node.value.size(), i);
-      if (res.ec != std::errc())
-         ec = redis::error::not_a_number;
+      switch (node.data_type) {
+         case resp3::type::number:
+         {
+            i = node.aggregate_size;
+            if (node.value == "-") {
+               if constexpr (std::is_signed<T>::value) {
+                  i *= -1;
+               } else {
+                  ec = redis::error::not_a_number;
+                  return;
+               }
+            }
+         } break;
+         default:
+         {
+            auto const res = std::from_chars(node.value.data(), node.value.data() + node.value.size(), i);
+            if (res.ec != std::errc())
+               ec = redis::error::not_a_number;
+         }
+      }
    }
 };
 
@@ -70,7 +87,7 @@ struct converter<bool, false> {
    template <class String>
    static void apply(bool& t, resp3::basic_node<String> const& node, system::error_code&)
    {
-      t = *node.value.data() == 't';
+      t = node.aggregate_size == 1;
    }
 };
 
@@ -150,11 +167,12 @@ void boost_redis_from_bulk(T& t, resp3::basic_node<String> const& node, system::
 template <class Result>
 class general_aggregate {
 private:
-   Result* result_;
+   Result* res_;
+   bool next_is_append_ = false;
 
 public:
    explicit general_aggregate(Result* c = nullptr)
-   : result_(c)
+   : res_(c)
    { }
 
    void on_init() { }
@@ -163,24 +181,48 @@ public:
    template <class String>
    void on_node(resp3::basic_node<String> const& nd, system::error_code&)
    {
-      BOOST_ASSERT_MSG(!!result_, "Unexpected null pointer");
+      BOOST_ASSERT_MSG(!!res_, "Unexpected null pointer");
+
       switch (nd.data_type) {
          case resp3::type::blob_error:
          case resp3::type::simple_error:
-            *result_ = error{
+         {
+            // TODO: Append data instead of overwrite.
+            *res_ = error{
                nd.data_type,
                std::string{std::cbegin(nd.value), std::cend(nd.value)}
             };
-            break;
-         default:
-            if (result_->has_value()) {
-               (**result_).push_back({
-                  nd.data_type,
-                  nd.aggregate_size,
-                  nd.depth,
-                  std::string{std::cbegin(nd.value), std::cend(nd.value)}
-               });
+         } break;
+         //case resp3::type::attribute:
+         case resp3::type::streamed_string_part:
+         case resp3::type::doublean:
+         case resp3::type::big_number:
+         case resp3::type::verbatim_string:
+         case resp3::type::simple_string:
+         case resp3::type::blob_string:
+         {
+            if (!res_->has_value())
+               return;
+
+            if (!std::exchange(next_is_append_, nd.aggregate_size != 0u)) {
+               res_->value().push_back({nd.data_type, 0u, nd.depth, {}});
             }
+
+            res_->value().back().value.append(nd.value.begin(), nd.value.end());
+
+         } break;
+         default:
+         {
+            if (!res_->has_value())
+               return;
+
+            res_->value().push_back({
+               nd.data_type,
+               nd.aggregate_size,
+               nd.depth,
+               std::string{std::cbegin(nd.value), std::cend(nd.value)}
+            });
+         }
       }
    }
 };
@@ -352,8 +394,6 @@ public:
          return;
       }
 
-      BOOST_ASSERT(nd.aggregate_size == 1);
-
       if (nd.depth < 1) {
          ec = redis::error::expects_resp3_set;
          return;
@@ -368,47 +408,106 @@ public:
 template <class Result>
 class map_impl {
 private:
+   using value_type = typename Result::value_type;
+
    typename Result::iterator current_;
    bool on_key_ = true;
 
+   // Accumulates the key before inserting.
+   std::string key_str_;
+
 public:
-   void on_value_available(Result& result) { current_ = std::end(result); }
+   void on_value_available(Result&) {  }
 
    void on_init() { }
    void on_done() { }
 
    template <class String>
-   void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
+   void on_node(Result& res, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
-      if (is_aggregate(nd.data_type)) {
-         if (element_multiplicity(nd.data_type) != 2)
+      using key_type = typename Result::key_type;
+      switch (nd.data_type) {
+         case resp3::type::map:
+         {
+            current_ = std::end(res);
+         } break;
+         case resp3::type::simple_string:
+         case resp3::type::simple_error:
+         case resp3::type::number:
+         case resp3::type::doublean:
+         case resp3::type::boolean:
+         case resp3::type::big_number:
+         case resp3::type::null:
+         case resp3::type::blob_error:
+         case resp3::type::verbatim_string:
+         case resp3::type::blob_string:
+         case resp3::type::streamed_string:
+         case resp3::type::streamed_string_part:
+         {
+            if (nd.depth < 1u) {
+               ec = redis::error::expects_resp3_map;
+               return;
+            }
+
+            if (on_key_) {
+               if (key_str_.empty()) {
+                  // We haven't appended any data to the key yet.
+                  if (nd.aggregate_size == 0u) {
+                     // Key came whole. No need to accumulate in the temporary
+                     // buffer.
+                     key_type key{};
+                     boost_redis_from_bulk(key, nd, ec);
+                     current_ = res.insert(current_, value_type{key, {}});
+                     on_key_ = false; // Done with the key.
+                  } else {
+                     // Only part of the key was received. Accumulate in the
+                     // temporary buffer and wait for the remaining parts.
+                     key_str_ += nd.value;
+                  }
+               } else {
+                  // We are accumulating the key.
+                  if (nd.aggregate_size == 0u) {
+                     // Add any remaining data.
+                     key_str_ += nd.value;
+
+                     // Done accumulating, it can be inserted in the map now.
+                     key_type key{};
+
+                     // tmp node with a value that points to the whole key string.
+                     auto tmp_node = nd;
+                     tmp_node.value = key_str_; 
+                     boost_redis_from_bulk(key, tmp_node, ec);
+                     current_ = res.insert(current_, value_type{key, {}});
+                     key_str_ = {};
+                     on_key_ = false; // Done with the key.
+                  } else {
+                     // Another key part arrived. Accumulate and wait for the
+                     // remaining ones.
+                     key_str_ += nd.value;
+                  }
+               }
+            } else {
+               // Mapped type is not accumulated but passed directly to the
+               // deserialization function.
+               boost_redis_from_bulk(current_->second, nd, ec);
+               on_key_ = nd.aggregate_size == 0u; // Done with the key.
+            }
+
+         } break;
+         default:
+         {
             ec = redis::error::expects_resp3_map;
-         return;
+         }
       }
 
-      BOOST_ASSERT(nd.aggregate_size == 1);
-
-      if (nd.depth < 1) {
-         ec = redis::error::expects_resp3_map;
-         return;
-      }
-
-      if (on_key_) {
-         typename Result::key_type obj{};
-         boost_redis_from_bulk(obj, nd, ec);
-         current_ = result.insert(current_, {std::move(obj), {}});
-      } else {
-         typename Result::mapped_type obj{};
-         boost_redis_from_bulk(obj, nd, ec);
-         current_->second = std::move(obj);
-      }
-
-      on_key_ = !on_key_;
    }
 };
 
 template <class Result>
 class vector_impl {
+private:
+   bool next_is_append_ = false;
+
 public:
    void on_value_available(Result&) { }
 
@@ -416,14 +515,43 @@ public:
    void on_done() { }
 
    template <class String>
-   void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
+   void on_node(Result& res, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
-      if (is_aggregate(nd.data_type)) {
-         auto const m = element_multiplicity(nd.data_type);
-         result.reserve(result.size() + m * nd.aggregate_size);
-      } else {
-         result.push_back({});
-         boost_redis_from_bulk(result.back(), nd, ec);
+      switch (nd.data_type) {
+         case resp3::type::array:
+         case resp3::type::push:
+         case resp3::type::set:
+         case resp3::type::map:
+         case resp3::type::attribute:
+         {
+            res.reserve(res.size() + nd.aggregate_size);
+         } break;
+         case resp3::type::boolean:
+         case resp3::type::null:
+         case resp3::type::number:
+         {
+            res.push_back({});
+            boost_redis_from_bulk(res.back(), nd, ec);
+         } break;
+         case resp3::type::big_number:
+         case resp3::type::blob_error:
+         case resp3::type::blob_string:
+         case resp3::type::doublean:
+         case resp3::type::simple_error:
+         case resp3::type::simple_string:
+         case resp3::type::streamed_string_part:
+         case resp3::type::verbatim_string:
+         {
+            if (!std::exchange(next_is_append_, nd.aggregate_size != 0u)) {
+               res.push_back({});
+            }
+
+            boost_redis_from_bulk(res.back(), nd, ec);
+         } break;
+         default:
+         {
+            BOOST_ASSERT_MSG(false, "RESP3 type not supported.");
+         }
       }
    }
 };
@@ -497,7 +625,7 @@ public:
             return;
          }
 
-         if (result.size() != nd.aggregate_size * element_multiplicity(nd.data_type)) {
+         if (result.size() != nd.aggregate_size) {
             ec = redis::error::incompatible_size;
             return;
          }
@@ -507,7 +635,6 @@ public:
             return;
          }
 
-         BOOST_ASSERT(nd.aggregate_size == 1);
          boost_redis_from_bulk(result.at(i_), nd, ec);
       }
 
@@ -526,7 +653,6 @@ struct list_impl {
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (!is_aggregate(nd.data_type)) {
-         BOOST_ASSERT(nd.aggregate_size == 1);
          if (nd.depth < 1) {
             ec = redis::error::expects_resp3_aggregate;
             return;

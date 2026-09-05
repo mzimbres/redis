@@ -96,8 +96,8 @@ void test_add_nodes()
    add_nodes(t, "*2\r\n+hello\r\n+world\r\n");
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -107,7 +107,7 @@ void test_add_nodes()
 
    // Capacity will have raised to 512 bytes, at least. Add some more without reallocations
    add_nodes(t, "$3\r\nbye\r\n");
-   expected_nodes.push_back({type::blob_string, 1u, 0u, "bye"});
+   expected_nodes.push_back({type::blob_string, 0u, 0u, "bye"});
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 13u);
    BOOST_TEST_EQ(t.data_capacity(), 512u);
@@ -117,7 +117,7 @@ void test_add_nodes()
    // Add nodes above the first reallocation threshold. Node strings are still valid
    const std::string long_value(600u, 'a');
    add_nodes(t, "+" + long_value + "\r\n");
-   expected_nodes.push_back({type::simple_string, 1u, 0u, long_value});
+   expected_nodes.push_back({type::simple_string, 0u, 0u, long_value});
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 613u);
    BOOST_TEST_EQ(t.data_capacity(), 1024u);
@@ -126,7 +126,7 @@ void test_add_nodes()
 
    // Add some more nodes, still within the reallocation threshold
    add_nodes(t, "+some_other_value\r\n");
-   expected_nodes.push_back({type::simple_string, 1u, 0u, "some_other_value"});
+   expected_nodes.push_back({type::simple_string, 0u, 0u, "some_other_value"});
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 629u);
    BOOST_TEST_EQ(t.data_capacity(), 1024u);
@@ -135,7 +135,7 @@ void test_add_nodes()
 
    // Add some more, causing another reallocation
    add_nodes(t, "+" + long_value + "\r\n");
-   expected_nodes.push_back({type::simple_string, 1u, 0u, long_value});
+   expected_nodes.push_back({type::simple_string, 0u, 0u, long_value});
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 1229u);
    BOOST_TEST_EQ(t.data_capacity(), 2048u);
@@ -161,7 +161,7 @@ void test_add_nodes_copies()
 
    // Check
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "some_long_value_for_a_node"},
+      {type::simple_string, 0u, 0u, "some_long_value_for_a_node"},
    };
    check_nodes(t, expected_nodes);
 }
@@ -216,7 +216,7 @@ void test_add_nodes_big_node()
    const std::string long_value(1500u, 'h');
    add_nodes(t, "+" + long_value + "\r\n");
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, long_value},
+      {type::simple_string, 0u, 0u, long_value},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 1500u);
@@ -245,8 +245,8 @@ void test_add_nodes_tmp()
    BOOST_TEST(parse_checked(t, p, "*2\r\n+hello\r\n+world\r\n"));
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -263,8 +263,8 @@ void test_add_nodes_tmp()
 
    BOOST_TEST(parse_checked(t, p, ">2\r\n+good\r\n+bye\r\n"));
    expected_nodes.push_back({type::push, 2u, 0u, ""});
-   expected_nodes.push_back({type::simple_string, 1u, 1u, "good"});
-   expected_nodes.push_back({type::simple_string, 1u, 1u, "bye"});
+   expected_nodes.push_back({type::simple_string, 0u, 1u, "good"});
+   expected_nodes.push_back({type::simple_string, 0u, 1u, "bye"});
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 17u);
    BOOST_TEST_EQ(t.data_capacity(), 512u);
@@ -295,8 +295,8 @@ void test_add_nodes_existing_tmp()
    add_nodes(t, "*2\r\n+hello\r\n+world\r\n");
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -313,8 +313,8 @@ void test_add_nodes_existing_data_and_tmp()
    add_nodes(t, "*2\r\n+hello\r\n+world\r\n");
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -329,7 +329,7 @@ void test_add_nodes_existing_data_and_tmp()
 
    // This message is abandoned, and replaced by a full one
    add_nodes(t, "+complete message\r\n");
-   expected_nodes.push_back({type::simple_string, 1u, 0u, "complete message"});
+   expected_nodes.push_back({type::simple_string, 0u, 0u, "complete message"});
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 26u);
    BOOST_TEST_EQ(t.get_total_msgs(), 2u);
@@ -352,7 +352,7 @@ void test_reserve()
    // Adding some nodes now works
    add_nodes(t, "+hello\r\n");
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
    check_nodes(t, expected_nodes);
 }
@@ -408,8 +408,8 @@ void test_reserve_with_data()
    // Check
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -434,8 +434,8 @@ void test_reserve_with_tmp()
    // Check
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -484,12 +484,12 @@ void test_clear_reuse()
    add_nodes(t, "~6\r\n+orange\r\n+apple\r\n+one\r\n+two\r\n+three\r\n+orange\r\n");
    std::vector<node_view> expected_nodes{
       {type::set,           6u, 0u, ""      },
-      {type::simple_string, 1u, 1u, "orange"},
-      {type::simple_string, 1u, 1u, "apple" },
-      {type::simple_string, 1u, 1u, "one"   },
-      {type::simple_string, 1u, 1u, "two"   },
-      {type::simple_string, 1u, 1u, "three" },
-      {type::simple_string, 1u, 1u, "orange"},
+      {type::simple_string, 0u, 1u, "orange"},
+      {type::simple_string, 0u, 1u, "apple" },
+      {type::simple_string, 0u, 1u, "one"   },
+      {type::simple_string, 0u, 1u, "two"   },
+      {type::simple_string, 0u, 1u, "three" },
+      {type::simple_string, 0u, 1u, "orange"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.get_reallocs(), 1u);
@@ -500,8 +500,8 @@ void test_clear_reuse()
    add_nodes(t, "*2\r\n+hello\r\n+world\r\n");
    expected_nodes = {
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.get_reallocs(), 1u);
@@ -519,8 +519,8 @@ void test_clear_tmp()
    BOOST_TEST_NOT(parse_checked(t, p, "*2\r\n+hello\r\n"));
    std::vector<node_view> expected_nodes{
       {type::push,          2u, 0u, ""      },
-      {type::simple_string, 1u, 1u, "orange"},
-      {type::simple_string, 1u, 1u, "apple" },
+      {type::simple_string, 0u, 1u, "orange"},
+      {type::simple_string, 0u, 1u, "apple" },
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.get_total_msgs(), 1u);
@@ -535,8 +535,8 @@ void test_clear_tmp()
    BOOST_TEST(parse_checked(t, p, "*2\r\n+hello\r\n+world\r\n"));
    expected_nodes = {
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.get_total_msgs(), 1u);
@@ -563,8 +563,8 @@ void test_clear_only_tmp()
    BOOST_TEST(parse_checked(t, p, "*2\r\n+hello\r\n+world\r\n"));
    std::vector<node_view> expected_nodes = {
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.get_total_msgs(), 1u);
@@ -590,8 +590,8 @@ void test_clear_only_tmp_nodes()
    BOOST_TEST(parse_checked(t, p, "*2\r\n+hello\r\n+world\r\n"));
    std::vector<node_view> expected_nodes = {
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.get_total_msgs(), 1u);
@@ -616,8 +616,8 @@ void test_copy_ctor()
    add_nodes(*t, "*2\r\n+hello\r\n+world\r\n");
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
 
    // Construct, then destroy the original copy
@@ -665,7 +665,7 @@ void test_copy_ctor_adjust_capacity()
    flat_tree t;
    add_nodes(t, "+hello\r\n");
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
 
    // Cause reallocations
@@ -694,7 +694,7 @@ void test_copy_ctor_tmp()
    add_nodes(t, "+message\r\n");
    BOOST_TEST_NOT(parse_checked(t, p, "*2\r\n+hello\r\n"));
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
    };
 
    // Copy. The copy has the tmp nodes but they're hidden in its tmp area
@@ -706,10 +706,10 @@ void test_copy_ctor_tmp()
    // Finishing the message in the copy works
    BOOST_TEST(parse_checked(t2, p, "*2\r\n+hello\r\n+world\r\n"));
    expected_nodes = {
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
       {type::array,         2u, 0u, ""       },
-      {type::simple_string, 1u, 1u, "hello"  },
-      {type::simple_string, 1u, 1u, "world"  },
+      {type::simple_string, 0u, 1u, "hello"  },
+      {type::simple_string, 0u, 1u, "world"  },
    };
    check_nodes(t2, expected_nodes);
    BOOST_TEST_EQ(t2.data_size(), 17u);
@@ -726,8 +726,8 @@ void test_move_ctor()
 
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t2, expected_nodes);
    BOOST_TEST_EQ(t2.data_size(), 10u);
@@ -822,7 +822,7 @@ void test_move_ctor_tmp()
    add_nodes(t, "+message\r\n");
    BOOST_TEST_NOT(parse_checked(t, p, "*2\r\n+hello\r\n"));
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
    };
 
    // Move. The new object has the same tmp area
@@ -834,10 +834,10 @@ void test_move_ctor_tmp()
    // Finishing the message in the copy works
    BOOST_TEST(parse_checked(t2, p, "*2\r\n+hello\r\n+world\r\n"));
    expected_nodes = {
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
       {type::array,         2u, 0u, ""       },
-      {type::simple_string, 1u, 1u, "hello"  },
-      {type::simple_string, 1u, 1u, "world"  },
+      {type::simple_string, 0u, 1u, "hello"  },
+      {type::simple_string, 0u, 1u, "world"  },
    };
    check_nodes(t2, expected_nodes);
    BOOST_TEST_EQ(t2.data_size(), 17u);
@@ -860,8 +860,8 @@ void test_copy_assign()
 
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -881,7 +881,7 @@ void test_copy_assign_target_empty()
    t = t2;
 
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 5u);
@@ -903,7 +903,7 @@ void test_copy_assign_target_not_enough_capacity()
    t = t2;
 
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, big_node},
+      {type::simple_string, 0u, 0u, big_node},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 2000u);
@@ -961,7 +961,7 @@ void test_copy_assign_source_with_extra_capacity()
    t = t2;
 
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 5u);
@@ -994,7 +994,7 @@ void test_copy_assign_self()
    t = tref;
 
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 5u);
@@ -1018,7 +1018,7 @@ void test_copy_assign_tmp()
    // Assigning also copies where the tmp area starts
    t = t2;
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 7u);
@@ -1027,10 +1027,10 @@ void test_copy_assign_tmp()
    // The tmp area was also copied
    BOOST_TEST(parse_checked(t, p, "*2\r\n+hello\r\n+world\r\n"));
    expected_nodes = {
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
       {type::array,         2u, 0u, ""       },
-      {type::simple_string, 1u, 1u, "hello"  },
-      {type::simple_string, 1u, 1u, "world"  },
+      {type::simple_string, 0u, 1u, "hello"  },
+      {type::simple_string, 0u, 1u, "world"  },
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 17u);
@@ -1050,8 +1050,8 @@ void test_move_assign()
 
    std::vector<node_view> expected_nodes{
       {type::array,         2u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "hello"},
-      {type::simple_string, 1u, 1u, "world"},
+      {type::simple_string, 0u, 1u, "hello"},
+      {type::simple_string, 0u, 1u, "world"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 10u);
@@ -1094,7 +1094,7 @@ void test_move_assign_target_empty()
    t = std::move(t2);
 
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "hello"},
+      {type::simple_string, 0u, 0u, "hello"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 5u);
@@ -1151,7 +1151,7 @@ void test_move_assign_tmp()
    // When moving, the tmp area is moved, too
    t = std::move(t2);
    std::vector<node_view> expected_nodes{
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 7u);
@@ -1160,10 +1160,10 @@ void test_move_assign_tmp()
    // Finish the message
    BOOST_TEST(parse_checked(t, p, "*2\r\n+hello\r\n+world\r\n"));
    expected_nodes = {
-      {type::simple_string, 1u, 0u, "message"},
+      {type::simple_string, 0u, 0u, "message"},
       {type::array,         2u, 0u, ""       },
-      {type::simple_string, 1u, 1u, "hello"  },
-      {type::simple_string, 1u, 1u, "world"  },
+      {type::simple_string, 0u, 1u, "hello"  },
+      {type::simple_string, 0u, 1u, "world"  },
    };
    check_nodes(t, expected_nodes);
    BOOST_TEST_EQ(t.data_size(), 17u);
@@ -1178,8 +1178,8 @@ void test_iterators()
    flat_tree t;
    add_nodes(t, "+node1\r\n");
    add_nodes(t, ":200\r\n");
-   constexpr node_view node1{type::simple_string, 1u, 0u, "node1"};
-   constexpr node_view node2{type::number, 1u, 0u, "200"};
+   constexpr node_view node1{type::simple_string, 0u, 0u, "node1"};
+   constexpr node_view node2{type::number, 200u, 0u, "+"};
 
    // These methods are const
    const auto& tconst = t;
@@ -1236,8 +1236,8 @@ void test_reverse_iterators()
    const auto& tconst = t;
 
    constexpr node_view expected_nodes[] = {
-      {type::number,        1u, 0u, "200"  },
-      {type::simple_string, 1u, 0u, "node1"},
+      {type::number,        200u, 0u, "+"  },
+      {type::simple_string, 0u,   0u, "node1"},
    };
    BOOST_TEST_ALL_EQ(
       tconst.rbegin(),
@@ -1265,7 +1265,7 @@ void test_reverse_iterators_tmp()
 
    // Only the full message appears in the reversed range
    constexpr node_view expected_nodes[] = {
-      {type::simple_string, 1u, 1u, "node1"},
+      {type::simple_string, 0u, 1u, "node1"},
       {type::array,         1u, 0u, ""     },
    };
    BOOST_TEST_ALL_EQ(t.rbegin(), t.rend(), std::begin(expected_nodes), std::end(expected_nodes));
@@ -1283,7 +1283,7 @@ void test_at()
 
    // Nodes in the range can be accessed with at()
    constexpr node_view n0{type::array, 1u, 0u, ""};
-   constexpr node_view n1{type::simple_string, 1u, 1u, "node1"};
+   constexpr node_view n1{type::simple_string, 0u, 1u, "node1"};
    BOOST_TEST_EQ(t.at(0u), n0);
    BOOST_TEST_EQ(t.at(1u), n1);
 
@@ -1313,8 +1313,8 @@ void test_unchecked_access()
    add_nodes(t, "*2\r\n+node1\r\n+node2\r\n");
 
    constexpr node_view n0{type::array, 2u, 0u, ""};
-   constexpr node_view n1{type::simple_string, 1u, 1u, "node1"};
-   constexpr node_view n2{type::simple_string, 1u, 1u, "node2"};
+   constexpr node_view n1{type::simple_string, 0u, 1u, "node1"};
+   constexpr node_view n2{type::simple_string, 0u, 1u, "node2"};
 
    // operator []
    BOOST_TEST_EQ(t[0u], n0);
@@ -1334,7 +1334,7 @@ void test_data()
 
    constexpr node_view expected_nodes[] = {
       {type::array,         1u, 0u, ""     },
-      {type::simple_string, 1u, 1u, "node1"},
+      {type::simple_string, 0u, 1u, "node1"},
    };
 
    BOOST_TEST_NE(t.data(), nullptr);
