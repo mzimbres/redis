@@ -291,6 +291,28 @@ void test_parse_int()
      p.write(data, ec);
      BOOST_TEST_EQ(ec, error::empty_field);
    }
+
+   { std::string_view const data1 = ":1234", data2 = ":123456789\r\n";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     // Part 1
+     res = p.write(data1, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 0);
+     BOOST_TEST(!p.done());
+
+     // Part 2
+     res = p.write(data2, ec);
+     BOOST_TEST_EQ(res.consumed, 12);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST_EQ(res.node.value, "123456789");
+     BOOST_TEST(p.done());
+   }
 }
 
 void test_parse_set()

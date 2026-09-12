@@ -40,7 +40,10 @@ std::size_t parser::get_consumed() const noexcept { return consumed_; }
 
 bool parser::done() const noexcept
 {
-   return depth_ == 0 && bulk_ == type::invalid && consumed_ != 0;
+   return depth_ == 0 &&
+          bulk_ == type::invalid &&
+          consumed_ != 0 &&
+          header_.empty();
 }
 
 void parser::commit_elem() noexcept
