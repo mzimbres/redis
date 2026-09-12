@@ -12,6 +12,8 @@
 #include <charconv>
 #include <cstddef>
 #include <limits>
+#include <algorithm>
+#include <iostream>
 
 namespace boost::redis::resp3 {
 
@@ -50,24 +52,50 @@ void parser::commit_elem() noexcept
    }
 }
 
+bool parser::search_sep(std::string_view data, system::error_code& ec)
+{
+  // A resp3 header has the form
+  //
+  //   'c<data>\r\n'
+  //
+  // where both c and <data> do contain neither '\r' nor '\n'. Therefore in the
+  // loop below we just have to wait for '\n'. If bad input is sent, the
+  // processing of <data> above will fail.
+  for (; consumed_ < data.size(); ++consumed_) {
+     header_.push_back(data[consumed_]);
+
+     if (data[consumed_] == '\n') {
+        if (header_.size() < 3u) {
+           ec = redis::error::invalid_data_type;
+           return false;
+        }
+
+        consumed_ += 1;
+        return true;
+     }
+  }
+
+  return false;
+}
+
 auto parser::write(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
    switch (bulk_) {
       case type::invalid:
       {
-         auto const pos = view.find(sep, consumed_);
-         if (pos == std::string::npos)
-            return {};  // Needs more data to proceeed.
+         auto const sep_res = search_sep(view, ec);
+         if (ec || !sep_res) {
+           return {}; // Needs more or error ocurred.
+         }
 
-         auto const t = to_type(view.at(consumed_));
-         auto const content = view.substr(consumed_ + 1, pos - 1 - consumed_);
-         auto const ret = write_impl(t, content, ec);
+         auto const ret = process_header(ec);
          if (ec)
             return {};
 
-         consumed_ = pos + 2;
-         if (!bulk_expected())
+         header_.clear();
+         if (!bulk_expected()) {
             return {consumed_, ret};
+         }
       }
          [[fallthrough]];
 
@@ -88,15 +116,22 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
    }
 }
 
-auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
-   -> parser::node_type
+std::string_view parser::get_header_content() const noexcept
+{
+   BOOST_ASSERT(header_.size() >= 3u);
+   return std::string_view(header_.data() + 1, header_.size() - 3);
+}
+
+auto parser::process_header(system::error_code& ec) -> parser::node_type
 {
    BOOST_ASSERT(!bulk_expected());
 
+   auto const t = to_type(header_.front());
    switch (t) {
       case type::streamed_string_part:
       {
-         to_int(bulk_length_, elem, ec);
+         auto const num = get_header_content();
+         to_int(bulk_length_, num, ec);
          if (ec)
             return {};
 
@@ -115,7 +150,7 @@ auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
       case type::verbatim_string:
       case type::blob_string:
       {
-         if (elem.at(0) == '?') {
+         if (header_.at(0) == '?') {
             // NOTE: This can only be triggered with blob_string.
             // Trick: A streamed string is read as an aggregate of
             // infinite length. When the streaming is done the server
@@ -123,7 +158,8 @@ auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
             sizes_[++depth_] = (std::numeric_limits<std::size_t>::max)();
             return {type::streamed_string, 0, depth_, {}};
          } else {
-            to_int(bulk_length_, elem, ec);
+            auto const num = get_header_content();
+            to_int(bulk_length_, num, ec);
             if (ec)
                return {};
 
@@ -133,17 +169,18 @@ auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
       } break;
       case type::boolean:
       {
-         if (std::empty(elem)) {
+         auto const value = get_header_content();
+         if (std::empty(value)) {
             ec = error::empty_field;
             return {};
          }
 
-         if (elem.at(0) != 'f' && elem.at(0) != 't') {
+         if (value.at(0) != 'f' && value.at(0) != 't') {
             ec = error::unexpected_bool_value;
             return {};
          }
 
-         node_type const ret{t, 1, depth_, elem};
+         node_type const ret{t, 1, depth_, value};
          commit_elem();
          return ret;
       } break;
@@ -151,17 +188,22 @@ auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
       case type::big_number:
       case type::number:
       {
-         if (std::empty(elem)) {
+         auto const num = get_header_content();
+         if (std::empty(num)) {
             ec = error::empty_field;
             return {};
          }
-      }
-         [[fallthrough]];
+
+         node_type const ret = {t, 1, depth_, num};
+         commit_elem();
+         return ret;
+      } break;
       case type::simple_error:
       case type::simple_string:
       case type::null:
       {
-         node_type const ret = {t, 1, depth_, elem};
+         auto const num = get_header_content();
+         node_type const ret = {t, 1, depth_, num};
          commit_elem();
          return ret;
       } break;
@@ -171,8 +213,9 @@ auto parser::write_impl(type t, std::string_view elem, system::error_code& ec)
       case type::attribute:
       case type::map:
       {
+         auto const num = get_header_content();
          std::size_t l = static_cast<std::size_t>(-1);
-         to_int(l, elem, ec);
+         to_int(l, num, ec);
          if (ec)
             return {};
 

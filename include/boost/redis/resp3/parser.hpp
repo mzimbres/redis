@@ -30,14 +30,14 @@ public:
      node_type node;
    };
 
-   static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
-   using header_type = boost::static_string<1 + uint64_digits + 2>;
-
    static constexpr std::size_t max_embedded_depth = 5;
    static constexpr std::string_view sep = "\r\n";
 
 private:
+   static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
+
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
+   using header_type = boost::static_string<1 + uint64_digits + 2>;
    
    // Stores a RESP3 header in the form "t<num>\r\n"
    header_type header_{};
@@ -69,7 +69,7 @@ private:
    std::size_t consumed_;
 
    // Returns the number of bytes that have been consumed.
-   auto write_impl(type t, std::string_view elem, system::error_code& ec) -> node_type;
+   auto process_header(system::error_code& ec) -> node_type;
 
    void commit_elem() noexcept;
 
@@ -80,6 +80,10 @@ private:
    {
       return bulk_ != type::invalid;
    }
+
+   std::string_view get_header_content() const noexcept;
+
+   bool search_sep(std::string_view data, system::error_code& ec);
 
 public:
    parser();
@@ -112,6 +116,8 @@ std::size_t write(parser& p, std::string_view const& msg, Adapter& adapter, syst
       if (ec)
          return 0;
 
+      // TODO: remove this once it is possible to pass nodes with partial data
+      // to the adapters.
       if (res.consumed == 0u)
          return 0;
 
