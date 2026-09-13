@@ -68,22 +68,19 @@ private:
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
 
+   // Last character the previous buffer passed to write_some was "\r".
+   bool last_was_r_;
+
    // Returns the number of bytes that have been consumed.
-   auto process_header(system::error_code& ec) -> node_type;
+   auto process_header(std::string_view const& data, system::error_code& ec) -> node_type;
 
    void commit_elem() noexcept;
 
-   // The bulk type expected in the next read. If none is expected
-   // returns type::invalid.
-   [[nodiscard]]
-   auto bulk_expected() const noexcept -> bool
-   {
-      return bulk_ != type::invalid;
-   }
-
    std::string_view get_header_content() const noexcept;
 
-   bool search_sep(std::string_view data, system::error_code& ec);
+   std::string_view search_sep(std::string_view data, system::error_code& ec);
+
+   bool is_delimiter(std::string_view data) const noexcept;
 
 public:
    parser();
@@ -99,6 +96,8 @@ public:
    void reset();
 
    bool is_parsing() const noexcept;
+
+   void rewind();
 };
 
 // Returns the number of bytes consumed from the buffer, where zero means more
@@ -114,11 +113,6 @@ std::size_t write(parser& p, std::string_view const& msg, Adapter& adapter, syst
    while (!p.done()) {
       auto const res = p.write(msg, ec);
       if (ec)
-         return 0;
-
-      // TODO: remove this once it is possible to pass nodes with partial data
-      // to the adapters.
-      if (res.consumed == 0u)
          return 0;
 
       adapter.on_node(res.node, ec);

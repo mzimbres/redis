@@ -26,6 +26,11 @@ void to_int(std::size_t& i, std::string_view sv, system::error_code& ec)
 
 parser::parser() { reset(); }
 
+void parser::rewind()
+{
+   consumed_ = 0;
+}
+
 void parser::reset()
 {
    header_ = {};
@@ -34,6 +39,7 @@ void parser::reset()
    bulk_length_ = default_bulk_length;
    bulk_ = type::invalid;
    consumed_ = 0;
+   last_was_r_ = false;
 }
 
 std::size_t parser::get_consumed() const noexcept { return consumed_; }
@@ -41,7 +47,7 @@ std::size_t parser::get_consumed() const noexcept { return consumed_; }
 bool parser::done() const noexcept
 {
    return depth_ == 0 &&
-          bulk_ == type::invalid &&
+          bulk_ != type::invalid &&
           consumed_ != 0 &&
           header_.empty();
 }
@@ -55,48 +61,76 @@ void parser::commit_elem() noexcept
    }
 }
 
-bool parser::search_sep(std::string_view data, system::error_code& ec)
+bool parser::is_delimiter(std::string_view data) const noexcept
 {
-  // A resp3 header has the form
-  //
-  //   'c<data>\r\n'
-  //
-  // where both c and <data> do contain neither '\r' nor '\n'. Therefore in the
-  // loop below we just have to wait for '\n'. If bad input is sent, the
-  // processing of <data> above will fail.
-  for (; consumed_ < data.size(); ++consumed_) {
-     header_.push_back(data[consumed_]);
+   if (data[consumed_] != '\n')
+      return false;
 
-     if (data[consumed_] == '\n') {
-        if (header_.size() < 3u) {
-           ec = redis::error::invalid_data_type;
-           return false;
-        }
+   // If this is the first element in the buffer we can't look at the previous
+   // element to check if it is a '\r'.
+   if (consumed_ == 0u)
+      return last_was_r_;
 
-        consumed_ += 1;
-        return true;
-     }
-  }
+   return data[consumed_ - 1] == '\r';
+}
 
-  return false;
+std::string_view parser::search_sep(std::string_view data, system::error_code& ec)
+{
+   // A resp3 header has the form
+   //
+   //   'c<data>\r\n'
+   //
+   // Returns the size of the data part.
+   std::size_t const start = header_.empty() ? consumed_ + 1 : consumed_;
+   for (; consumed_ < data.size(); ++consumed_) {
+      // TODO: This is needed only for bulk types and aggregates..
+      if (header_.size() < header_type::static_capacity) {
+         header_.push_back(data[consumed_]);
+      }
+
+      if (is_delimiter(data)) {
+         if (header_.size() < 3u) {
+            ec = redis::error::invalid_data_type;
+            return {};
+         }
+
+         consumed_ += 1;
+         bulk_ = to_type(header_.front());
+         auto const data_size = consumed_ - start;
+         return data.substr(start,  data_size);
+      }
+   }
+
+   last_was_r_ = data.back() == '\r';
+   auto const data_size = consumed_ - start;
+   return data.substr(start, data_size);
 }
 
 auto parser::write(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
+   // TODO: Can we avoid this check?
+   if (view.size() == 0u)
+     return {};
+
    switch (bulk_) {
       case type::invalid:
       {
-         auto const sep_res = search_sep(view, ec);
-         if (ec || !sep_res) {
-           return {}; // Needs more or error ocurred.
+         auto const data = search_sep(view, ec);
+         if (ec) {
+            return {}; // Error.
          }
 
-         auto const ret = process_header(ec);
+         if (bulk_ == type::invalid) {
+            auto const t = to_type(header_.front());
+            return {consumed_, {t, 1, depth_, data}};
+         }
+
+         auto const ret = process_header(data, ec);
          if (ec)
             return {};
 
          header_.clear();
-         if (!bulk_expected()) {
+         if (!is_bulk(bulk_)) { // TODO
             return {consumed_, ret};
          }
       }
@@ -125,12 +159,9 @@ std::string_view parser::get_header_content() const noexcept
    return std::string_view(header_.data() + 1, header_.size() - 3);
 }
 
-auto parser::process_header(system::error_code& ec) -> parser::node_type
+auto parser::process_header(std::string_view const& data, system::error_code& ec) -> parser::node_type
 {
-   BOOST_ASSERT(!bulk_expected());
-
-   auto const t = to_type(header_.front());
-   switch (t) {
+   switch (bulk_) {
       case type::streamed_string_part:
       {
          auto const num = get_header_content();
@@ -166,7 +197,6 @@ auto parser::process_header(system::error_code& ec) -> parser::node_type
             if (ec)
                return {};
 
-            bulk_ = t;
             return {};
          }
       } break;
@@ -183,7 +213,7 @@ auto parser::process_header(system::error_code& ec) -> parser::node_type
             return {};
          }
 
-         node_type const ret{t, 1, depth_, value};
+         node_type const ret{bulk_, 1, depth_, value};
          commit_elem();
          return ret;
       } break;
@@ -191,13 +221,12 @@ auto parser::process_header(system::error_code& ec) -> parser::node_type
       case type::big_number:
       case type::number:
       {
-         auto const num = get_header_content();
-         if (std::empty(num)) {
+         if (std::empty(data)) {
             ec = error::empty_field;
             return {};
          }
 
-         node_type const ret = {t, 1, depth_, num};
+         node_type const ret = {bulk_, 1, depth_, data};
          commit_elem();
          return ret;
       } break;
@@ -205,8 +234,7 @@ auto parser::process_header(system::error_code& ec) -> parser::node_type
       case type::simple_string:
       case type::null:
       {
-         auto const num = get_header_content();
-         node_type const ret = {t, 1, depth_, num};
+         node_type const ret = {bulk_, 1, depth_, data};
          commit_elem();
          return ret;
       } break;
@@ -222,7 +250,7 @@ auto parser::process_header(system::error_code& ec) -> parser::node_type
          if (ec)
             return {};
 
-         node_type const ret = {t, l, depth_, {}};
+         node_type const ret = {bulk_, l, depth_, {}};
          if (l == 0) {
             commit_elem();
          } else {
@@ -233,7 +261,7 @@ auto parser::process_header(system::error_code& ec) -> parser::node_type
 
             ++depth_;
 
-            sizes_[depth_] = l * element_multiplicity(t);
+            sizes_[depth_] = l * element_multiplicity(bulk_);
          }
          return ret;
       } break;

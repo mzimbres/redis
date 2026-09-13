@@ -151,6 +151,17 @@ constexpr auto to_type(char c) noexcept -> type
    }
 }
 
+constexpr auto is_bulk(type t) noexcept -> bool
+{
+   switch (t) {
+      case type::blob_error:
+      case type::verbatim_string:
+      case type::blob_string:
+        return true;
+      default:  return false;
+   }
+}
+
 }  // namespace boost::redis::resp3
 
 #endif  // BOOST_REDIS_RESP3_TYPE_HPP
