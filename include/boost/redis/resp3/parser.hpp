@@ -8,6 +8,7 @@
 #define BOOST_REDIS_RESP3_PARSER_HPP
 
 #include <boost/redis/resp3/node.hpp>
+#include <boost/redis/error.hpp>
 
 #include <boost/system/error_code.hpp>
 
@@ -15,9 +16,26 @@
 #include <limits>
 #include <optional>
 #include <string_view>
+#include <cctype>
 #include <boost/static_string.hpp>
 
 namespace boost::redis::resp3 {
+
+namespace detail {
+
+inline
+void add_digit(std::size_t& result, unsigned char c, system::error_code& ec)
+{
+   if (!std::isdigit(c)) {
+      ec = redis::error::not_a_number;
+      return;
+   }
+
+   // TODO: Check for overflow.
+   result = result * 10 + (c - '0');
+}
+
+}
 
 class parser {
 public:

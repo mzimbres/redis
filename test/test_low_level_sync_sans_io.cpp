@@ -464,6 +464,31 @@ void test_parse_set()
    }
 }
 
+void test_uint_parser()
+{
+   using boost::redis::resp3::detail::add_digit;
+   using boost::redis::error;
+   using boost::system::error_code;
+
+   {
+      error_code ec;
+      std::size_t result = 0;
+
+      add_digit(result, '1', ec);
+      BOOST_TEST(!ec);
+      BOOST_TEST_EQ(result, 1);
+      add_digit(result, '2', ec);
+      BOOST_TEST(!ec);
+      BOOST_TEST_EQ(result, 12);
+      add_digit(result, '3', ec);
+      BOOST_TEST(!ec);
+      BOOST_TEST_EQ(result, 123);
+      add_digit(result, 'a', ec);
+      BOOST_TEST_EQ(ec, error::not_a_number);
+      BOOST_TEST_EQ(result, 123);
+   }
+}
+
 }  // namespace
 
 int main()
@@ -471,7 +496,8 @@ int main()
    test_parse_simple_string();
    test_parse_int();
    test_simple_string_adapter();
-   //test_parse_set();
+   test_parse_set();
+   test_uint_parser();
    //test_low_level_sync_sans_io();
    //test_issue_210_empty_set();
    //test_issue_210_non_empty_set_size_one();
