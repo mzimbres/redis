@@ -39,7 +39,6 @@ void parser::reset()
    bulk_ = type::invalid;
    consumed_ = 0;
    header_.reset();
-   header_done_ = false;
 }
 
 std::size_t parser::get_consumed() const noexcept { return consumed_; }
@@ -63,26 +62,14 @@ void parser::commit_elem() noexcept
 
 std::string_view parser::search_sep(std::string_view data, system::error_code& ec)
 {
-   // A resp3 header has the form
-   //
-   //   'c<data>\r\n'
-   //
-   // Returns the size of the data part.
    std::size_t const start = header_.empty() ? consumed_ + 1 : consumed_;
 
-   auto const res = header_.add_type(data.at(consumed_), ec);
-   if (ec)
-      return {};
-
-   if (res)
-      consumed_ += 1;
-
    for (; consumed_ < data.size(); ++consumed_) {
-      header_done_ = header_.add(data.at(consumed_), ec);
+      header_.add(data.at(consumed_), ec);
       if (ec)
         return {};
 
-      if (header_done_) {
+      if (header_.done()) {
          consumed_ += 1;
          auto const data_size = consumed_ - start;
          return data.substr(start,  data_size);
@@ -107,7 +94,7 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
             return {}; // Error.
          }
 
-         if (!header_done_) {
+         if (!header_.done()) {
             return {consumed_, {header_.t, 1, depth_, data}};
          }
 
@@ -117,10 +104,9 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
 
          auto const t = header_.t;
          header_.reset();
-         header_done_ = false;
 
          if (is_bulk(header_.t)) {
-           bulk_ = t;
+            bulk_ = t;
          } else {
             return {consumed_, ret};
          }

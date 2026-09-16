@@ -42,6 +42,12 @@ struct header {
    std::size_t last_r_pos_ = 0;
    std::size_t pos_ = 0;
    bool is_streamed_string = false;
+   bool done_ = false;
+
+   bool done() const noexcept
+   {
+      return done_;
+   }
 
    void reset()
    {
@@ -50,63 +56,77 @@ struct header {
       last_r_pos_ = 0;
       pos_ = 0;
       is_streamed_string = false;
+      done_ = false;
    }
 
    bool empty() const noexcept
    {
-      return t == type::invalid &&
-             size == 0 &&
-             last_r_pos_ == 0;
+      return t == type::invalid;
    }
 
-   bool add_type(unsigned char c, system::error_code& ec)
+   bool add(unsigned char c, system::error_code& ec)
    {
-      if (t == type::invalid) {
+      BOOST_ASSERT(!done_);
+
+      if (pos_ == 0) {
          t = to_type(c);
          if (t == type::invalid) {
             ec = redis::error::invalid_data_type;
             return false;
          }
-         pos_ += 1;
-         return true;
+      } else {
+         switch (c) {
+            case '\n':
+            {
+               done_ = t != type::invalid && (last_r_pos_ + 1u) == pos_;
+               return done_;
+            } break;
+
+            case '\r':
+            {
+               last_r_pos_ = pos_;
+            } break;
+
+            case '?':
+            {
+               if (pos_ == 1)
+                  is_streamed_string = true;
+
+            } break;
+
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+            {
+               switch (t) {
+                  case type::streamed_string_part:
+                  case type::blob_error:
+                  case type::verbatim_string:
+                  case type::blob_string:
+                  case type::push:
+                  case type::set:
+                  case type::array:
+                  case type::attribute:
+                  case type::map:
+                  {
+                     // TODO: Use this to check for overflow.
+                     //static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
+                     size = size * 10 + (c - '0');
+                  } break;
+                  default: {}
+               }
+            } break;
+         }
       }
 
-      return false;
-   }
-
-   bool add(unsigned char c, system::error_code& ec)
-   {
       pos_ += 1;
-
-      if (c == '\n') {
-         return (last_r_pos_ + 1u) == pos_;
-      }
-
-      if (c == '\r') {
-         last_r_pos_ = pos_;
-         return false;
-      }
-
-      if (pos_ == 2 && c == '?') {
-         is_streamed_string = true;
-         return false;
-      }
-
-      switch (t) {
-         case type::streamed_string_part:
-         case type::blob_error:
-         case type::verbatim_string:
-         case type::blob_string:
-         case type::push:
-         case type::set:
-         case type::array:
-         case type::attribute:
-         case type::map:
-            add_digit(size, c, ec);
-            break;
-         default: {}
-      }
-
       return false;
    }
 };
@@ -131,7 +151,6 @@ private:
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
    
    detail::header header_{};
-   bool header_done_ = false;
 
    // sizes_[0] = 2 because the sentinel must be more than 1.
    static constexpr sizes_type default_sizes = {
