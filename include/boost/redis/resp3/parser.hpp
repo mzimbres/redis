@@ -17,7 +17,6 @@
 #include <optional>
 #include <string_view>
 #include <cctype>
-#include <boost/static_string.hpp>
 
 namespace boost::redis::resp3 {
 
@@ -26,14 +25,91 @@ namespace detail {
 inline
 void add_digit(std::size_t& result, unsigned char c, system::error_code& ec)
 {
+
    if (!std::isdigit(c)) {
       ec = redis::error::not_a_number;
       return;
    }
 
-   // TODO: Check for overflow.
+   // TODO: Use this to check for overflow.
+   //static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
    result = result * 10 + (c - '0');
 }
+
+struct header {
+   type t = type::invalid;
+   std::size_t size = 0;
+   std::size_t last_r_pos_ = 0;
+   std::size_t pos_ = 0;
+   bool is_streamed_string = false;
+
+   void reset()
+   {
+      t = type::invalid;
+      size = 0;
+      last_r_pos_ = 0;
+      pos_ = 0;
+      is_streamed_string = false;
+   }
+
+   bool empty() const noexcept
+   {
+      return t == type::invalid &&
+             size == 0 &&
+             last_r_pos_ == 0;
+   }
+
+   bool add_type(unsigned char c, system::error_code& ec)
+   {
+      if (t == type::invalid) {
+         t = to_type(c);
+         if (t == type::invalid) {
+            ec = redis::error::invalid_data_type;
+            return false;
+         }
+         pos_ += 1;
+         return true;
+      }
+
+      return false;
+   }
+
+   bool add(unsigned char c, system::error_code& ec)
+   {
+      pos_ += 1;
+
+      if (c == '\n') {
+         return (last_r_pos_ + 1u) == pos_;
+      }
+
+      if (c == '\r') {
+         last_r_pos_ = pos_;
+         return false;
+      }
+
+      if (pos_ == 2 && c == '?') {
+         is_streamed_string = true;
+         return false;
+      }
+
+      switch (t) {
+         case type::streamed_string_part:
+         case type::blob_error:
+         case type::verbatim_string:
+         case type::blob_string:
+         case type::push:
+         case type::set:
+         case type::array:
+         case type::attribute:
+         case type::map:
+            add_digit(size, c, ec);
+            break;
+         default: {}
+      }
+
+      return false;
+   }
+};
 
 }
 
@@ -52,13 +128,10 @@ public:
    static constexpr std::string_view sep = "\r\n";
 
 private:
-   static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
-
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
-   using header_type = boost::static_string<1 + uint64_digits + 2>;
    
-   // Stores a RESP3 header in the form "t<num>\r\n"
-   header_type header_{};
+   detail::header header_{};
+   bool header_done_ = false;
 
    // sizes_[0] = 2 because the sentinel must be more than 1.
    static constexpr sizes_type default_sizes = {
@@ -86,15 +159,10 @@ private:
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
 
-   // Last character the previous buffer passed to write_some was "\r".
-   bool last_was_r_;
-
    // Returns the number of bytes that have been consumed.
    auto process_header(std::string_view const& data, system::error_code& ec) -> node_type;
 
    void commit_elem() noexcept;
-
-   std::string_view get_header_content() const noexcept;
 
    std::string_view search_sep(std::string_view data, system::error_code& ec);
 
