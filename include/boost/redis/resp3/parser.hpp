@@ -156,7 +156,6 @@ private:
    static constexpr sizes_type default_sizes = {
       {2, 1, 1, 1, 1, 1}
    };
-   static constexpr auto default_bulk_length = static_cast<std::size_t>(-1);
 
    // The current depth. Simple data types will have depth 0, whereas
    // the elements of aggregates will have depth 1. Embedded types
@@ -167,9 +166,6 @@ private:
    // first element in the sizes stack is a sentinel and must be
    // different from 1.
    sizes_type sizes_;
-
-   // Contains the length expected in the next bulk read.
-   std::size_t bulk_length_;
 
    // The type of the next bulk. Contains type::invalid if no bulk is
    // expected.

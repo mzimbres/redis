@@ -489,13 +489,73 @@ void test_uint_parser()
    }
 }
 
+void test_parse_blob_string()
+{
+   using boost::redis::resp3::parser;
+   using boost::redis::error;
+   using boost::system::error_code;
+
+   { std::string_view const data = "$11\r\nboost.redis\r\n";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 18);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST_EQ(res.node.value, "boost.redis\r\n");
+     BOOST_TEST(p.done());
+   }
+
+   { std::string_view const d1 = "$11\r\nboos", d2 = "t.redi", d3 = "s\r\n";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     res = p.write(d1, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 9);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST_EQ(res.node.value, "boos");
+     BOOST_TEST(!p.done());
+
+     p.rewind();
+     res = p.write(d2, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 6);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST_EQ(res.node.value, "t.redi");
+     BOOST_TEST(!p.done());
+
+     p.rewind();
+     res = p.write(d3, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 3);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST_EQ(res.node.value, "s\r\n");
+     BOOST_TEST(p.done());
+   }
+}
+
 }  // namespace
 
 int main()
 {
+   test_parse_blob_string();
    test_parse_simple_string();
    test_parse_int();
-   //test_simple_string_adapter();
+   test_simple_string_adapter();
    test_parse_set();
    test_uint_parser();
    //test_low_level_sync_sans_io();

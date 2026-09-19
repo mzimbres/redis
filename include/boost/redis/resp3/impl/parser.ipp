@@ -35,7 +35,6 @@ void parser::reset()
 {
    depth_ = 0;
    sizes_ = default_sizes;
-   bulk_length_ = default_bulk_length;
    bulk_ = type::invalid;
    consumed_ = 0;
    header_.reset();
@@ -102,30 +101,35 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
          if (ec)
             return {};
 
-         auto const t = header_.t;
-         header_.reset();
-
          if (is_bulk(header_.t)) {
-            bulk_ = t;
+            bulk_ = header_.t;
          } else {
+            header_.reset();
             return {consumed_, ret};
          }
-
       }
          [[fallthrough]];
 
       default:  // Handles bulk.
       {
-         auto const span = bulk_length_ + 2;
-         if ((std::size(view) - consumed_) < span)
-            return {};  // Needs more data to proceeed.
+         auto const needed = header_.size + 2;
+         auto const available = view.size() - consumed_;
 
-         auto const bulk_view = view.substr(consumed_, bulk_length_);
-         node_type const ret = {bulk_, 1, depth_, bulk_view};
+         if (needed > available) {
+            auto const part = view.substr(consumed_);
+            consumed_ += part.size();
+            header_.size -= part.size();
+            return {consumed_, {header_.t, 1, depth_, part}};
+         }
+
+         auto const final_part = view.substr(consumed_, header_.size + 2u);
+         consumed_ += final_part.size();
+         node_type const ret = {header_.t, 1, depth_, final_part};
+
+         header_.reset();
          bulk_ = type::invalid;
          commit_elem();
 
-         consumed_ += span;
          return {consumed_, ret};
       }
    }
@@ -136,16 +140,13 @@ auto parser::process_header(std::string_view const& data, system::error_code& ec
    switch (header_.t) {
       case type::streamed_string_part:
       {
-         bulk_length_ = header_.size;
-
-         if (bulk_length_ == 0) {
-            auto const ret = node_type{type::streamed_string_part, 1, depth_, {}};
+         if (header_.size == 0) {
             sizes_[depth_] = 1;  // We are done.
-            bulk_ = type::invalid;
+
+            node_type const ret = {type::streamed_string_part, 1, depth_, {}};
             commit_elem();
             return ret;
          } else {
-            bulk_ = type::streamed_string_part;
             return {};
          }
       } break;
@@ -161,7 +162,6 @@ auto parser::process_header(std::string_view const& data, system::error_code& ec
             sizes_[++depth_] = (std::numeric_limits<std::size_t>::max)();
             return {type::streamed_string, 0, depth_, {}};
          } else {
-            bulk_length_ = header_.size;
             return {};
          }
       } break;
@@ -209,8 +209,10 @@ auto parser::process_header(std::string_view const& data, system::error_code& ec
 
 bool parser::is_parsing() const noexcept
 {
-   auto const v = depth_ == 0 && sizes_ == default_sizes && bulk_length_ == default_bulk_length &&
-                  bulk_ == type::invalid && consumed_ == 0;
+   auto const v = depth_ == 0 &&
+                  sizes_ == default_sizes &&
+                  bulk_ == type::invalid && consumed_ == 0 &&
+                  header_.empty();
 
    return !v;
 }
