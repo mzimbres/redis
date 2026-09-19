@@ -1,0 +1,21 @@
+{
+  "version": 10,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Default Config",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "BOOST_REDIS_INTEGRATION_TESTS": "ON",
+        "BOOST_INCLUDE_LIBRARIES": "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ]
+}
