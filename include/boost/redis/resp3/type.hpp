@@ -157,6 +157,7 @@ constexpr auto is_bulk(type t) noexcept -> bool
       case type::blob_error:
       case type::verbatim_string:
       case type::blob_string:
+      case type::streamed_string_part:
         return true;
       default:  return false;
    }

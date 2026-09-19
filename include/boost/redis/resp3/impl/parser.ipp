@@ -17,13 +17,6 @@
 
 namespace boost::redis::resp3 {
 
-void to_int(std::size_t& i, std::string_view sv, system::error_code& ec)
-{
-   auto const res = std::from_chars(sv.data(), sv.data() + std::size(sv), i);
-   if (res.ec != std::errc())
-      ec = error::not_a_number;
-}
-
 parser::parser() { reset(); }
 
 void parser::rewind()
@@ -35,7 +28,6 @@ void parser::reset()
 {
    depth_ = 0;
    sizes_ = default_sizes;
-   bulk_ = type::invalid;
    consumed_ = 0;
    header_.reset();
 }
@@ -45,7 +37,6 @@ std::size_t parser::get_consumed() const noexcept { return consumed_; }
 bool parser::done() const noexcept
 {
    return depth_ == 0 &&
-          bulk_ == type::invalid &&
           consumed_ != 0 &&
           header_.empty();
 }
@@ -85,85 +76,54 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
    if (view.size() == 0u)
      return {};
 
-   switch (bulk_) {
-      case type::invalid:
-      {
-         auto const data = search_sep(view, ec);
-         if (ec) {
-            return {}; // Error.
-         }
-
-         if (!header_.done()) {
-            return {consumed_, {header_.t, 1, depth_, data}};
-         }
-
-         auto const ret = process_header(data, ec);
-         if (ec)
-            return {};
-
-         if (is_bulk(header_.t)) {
-            bulk_ = header_.t;
-         } else {
-            header_.reset();
-            return {consumed_, ret};
-         }
+   if (!header_.done()) {
+      auto const data = search_sep(view, ec);
+      if (ec) {
+         return {}; // Error.
       }
-         [[fallthrough]];
 
-      default:  // Handles bulk.
-      {
-         auto const needed = header_.size + 2;
-         auto const available = view.size() - consumed_;
+      if (!header_.done()) {
+         return {consumed_, {header_.t, 1, depth_, data}};
+      }
 
-         if (needed > available) {
-            auto const part = view.substr(consumed_);
-            consumed_ += part.size();
-            header_.size -= part.size();
-            return {consumed_, {header_.t, 1, depth_, part}};
-         }
+      auto const ret = process_header(data, ec);
+      if (ec)
+         return {};
 
-         auto const final_part = view.substr(consumed_, header_.size + 2u);
-         consumed_ += final_part.size();
-         node_type const ret = {header_.t, 1, depth_, final_part};
-
+      if (!is_bulk(header_.t)) {
          header_.reset();
-         bulk_ = type::invalid;
-         commit_elem();
-
          return {consumed_, ret};
       }
    }
+
+   auto const needed = header_.size + 2;
+   auto const available = view.size() - consumed_;
+
+   if (needed > available) {
+      auto const part = view.substr(consumed_);
+      consumed_ += part.size();
+      header_.size -= part.size();
+      return {consumed_, {header_.t, 1, depth_, part}};
+   }
+
+   auto const final_part = view.substr(consumed_, header_.size + 2u);
+   consumed_ += final_part.size();
+   node_type const ret = {header_.t, 1, depth_, final_part};
+
+   header_.reset();
+   commit_elem();
+   return {consumed_, ret};
 }
 
 auto parser::process_header(std::string_view const& data, system::error_code& ec) -> parser::node_type
 {
    switch (header_.t) {
       case type::streamed_string_part:
-      {
-         if (header_.size == 0) {
-            sizes_[depth_] = 1;  // We are done.
-
-            node_type const ret = {type::streamed_string_part, 1, depth_, {}};
-            commit_elem();
-            return ret;
-         } else {
-            return {};
-         }
-      } break;
       case type::blob_error:
       case type::verbatim_string:
       case type::blob_string:
       {
-         if (header_.is_streamed_string) {
-            // NOTE: This can only be triggered with blob_string.
-            // Trick: A streamed string is read as an aggregate of
-            // infinite length. When the streaming is done the server
-            // is supposed to send a part with length 0.
-            sizes_[++depth_] = (std::numeric_limits<std::size_t>::max)();
-            return {type::streamed_string, 0, depth_, {}};
-         } else {
-            return {};
-         }
+         return {};
       } break;
       case type::boolean:
       case type::doublean:
@@ -172,6 +132,7 @@ auto parser::process_header(std::string_view const& data, system::error_code& ec
       case type::simple_error:
       case type::simple_string:
       case type::null:
+      case type::streamed_string:
       {
          node_type const ret = {header_.t, 1, depth_, data};
          commit_elem();
@@ -183,9 +144,8 @@ auto parser::process_header(std::string_view const& data, system::error_code& ec
       case type::attribute:
       case type::map:
       {
-         auto const l = header_.size;
-         node_type const ret = {header_.t, l, depth_, {}};
-         if (l == 0u) {
+         node_type const ret = {header_.t, header_.size, depth_, {}};
+         if (header_.size == 0u) {
             commit_elem();
          } else {
             if (depth_ == max_embedded_depth) {
@@ -193,9 +153,7 @@ auto parser::process_header(std::string_view const& data, system::error_code& ec
                return {};
             }
 
-            ++depth_;
-
-            sizes_[depth_] = l * element_multiplicity(header_.t);
+            sizes_[++depth_] = header_.get_agregate_length();
          }
          return ret;
       } break;
@@ -211,7 +169,7 @@ bool parser::is_parsing() const noexcept
 {
    auto const v = depth_ == 0 &&
                   sizes_ == default_sizes &&
-                  bulk_ == type::invalid && consumed_ == 0 &&
+                  consumed_ == 0 &&
                   header_.empty();
 
    return !v;

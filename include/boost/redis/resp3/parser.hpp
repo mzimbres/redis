@@ -41,8 +41,12 @@ struct header {
    std::size_t size = 0;
    std::size_t last_r_pos_ = 0;
    std::size_t pos_ = 0;
-   bool is_streamed_string = false;
    bool done_ = false;
+
+   auto get_agregate_length() const noexcept
+   {
+      return size * element_multiplicity(t);
+   }
 
    bool done() const noexcept
    {
@@ -55,7 +59,6 @@ struct header {
       size = 0;
       last_r_pos_ = 0;
       pos_ = 0;
-      is_streamed_string = false;
       done_ = false;
    }
 
@@ -90,7 +93,7 @@ struct header {
             case '?':
             {
                if (pos_ == 1)
-                  is_streamed_string = true;
+                  t = type::streamed_string;
 
             } break;
 
@@ -166,10 +169,6 @@ private:
    // first element in the sizes stack is a sentinel and must be
    // different from 1.
    sizes_type sizes_;
-
-   // The type of the next bulk. Contains type::invalid if no bulk is
-   // expected.
-   type bulk_;
 
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
