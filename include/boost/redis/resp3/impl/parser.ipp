@@ -50,26 +50,6 @@ void parser::commit_elem() noexcept
    }
 }
 
-std::string_view parser::search_sep(std::string_view data, system::error_code& ec)
-{
-   std::size_t const start = header_.empty() ? consumed_ + 1 : consumed_;
-
-   for (; consumed_ < data.size(); ++consumed_) {
-      header_.add(data.at(consumed_), ec);
-      if (ec)
-        return {};
-
-      if (header_.done()) {
-         consumed_ += 1;
-         auto const data_size = consumed_ - start;
-         return data.substr(start,  data_size);
-      }
-   }
-
-   auto const data_size = consumed_ - start;
-   return data.substr(start, data_size);
-}
-
 auto parser::write(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
    // TODO: Can we avoid this check?
@@ -77,10 +57,14 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
      return {};
 
    if (!header_.done()) {
-      auto const data = search_sep(view, ec);
+      auto const offset = header_.empty() ? 1 : 0;
+      auto const foo = header_.write(view.substr(consumed_), ec);
       if (ec) {
-         return {}; // Error.
+         return {};
       }
+
+      std::string_view const data = view.substr(consumed_ + offset, foo - offset);
+      consumed_ += foo;
 
       if (!header_.done()) {
          return {consumed_, {header_.t, 1, depth_, data}};

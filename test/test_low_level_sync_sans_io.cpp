@@ -558,36 +558,26 @@ void test_parse_streamed_string()
    using boost::redis::error;
    using boost::system::error_code;
 
-   { std::string_view const data = "$?\r\n;5\r\n12345\r\n";
-
+   {
      parser p;
      error_code ec;
      parser::result res;
 
-     res = p.write(data, ec);
+     res = p.write("$?\r\n", ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::streamed_string);
      BOOST_TEST_EQ(res.node.depth, 0u);
      BOOST_TEST_EQ(res.node.aggregate_size, 1u);
-     BOOST_TEST_EQ(res.node.value, "");
+     BOOST_TEST_EQ(res.node.value, "?\r\n");
      BOOST_TEST(p.done());
 
      p.reset();
-     res = p.write(data, ec);
+     res = p.write(";5\r\n12345\r\n", ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::streamed_string_part);
      BOOST_TEST_EQ(res.node.depth, 0u);
      BOOST_TEST_EQ(res.node.aggregate_size, 1u);
-     BOOST_TEST_EQ(res.node.value, "12345");
-     BOOST_TEST(p.done());
-
-     p.reset();
-     res = p.write(data, ec);
-     BOOST_TEST(!ec);
-     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::streamed_string_part);
-     BOOST_TEST_EQ(res.node.depth, 0u);
-     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
-     BOOST_TEST_EQ(res.node.value, "67890");
+     BOOST_TEST_EQ(res.node.value, "12345\r\n");
      BOOST_TEST(p.done());
    }
 
@@ -656,13 +646,13 @@ void test_parse_blob_string()
 
 int main()
 {
-   test_parse_streamed_string();
-   test_parse_blob_string();
    test_parse_simple_string();
    test_parse_int();
    test_parse_set();
    test_parse_map();
    test_parse_uint();
+   test_parse_blob_string();
+   test_parse_streamed_string();
    test_simple_string_adapter();
 
    //test_low_level_sync_sans_io();

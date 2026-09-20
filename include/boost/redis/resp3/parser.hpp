@@ -36,7 +36,7 @@ void add_digit(std::size_t& result, unsigned char c, system::error_code& ec)
    result = result * 10 + (c - '0');
 }
 
-struct header {
+struct header_parser {
    type t = type::invalid;
    std::size_t size = 0;
    std::size_t last_r_pos_ = 0;
@@ -132,6 +132,18 @@ struct header {
       pos_ += 1;
       return false;
    }
+
+   std::size_t write(std::string_view data, system::error_code& ec)
+   {
+      std::size_t i = 0;
+      for (; i < data.size() && !done(); ++i) {
+         add(data[i], ec);
+         if (ec)
+           return {};
+      }
+
+      return i;
+   }
 };
 
 }
@@ -153,7 +165,7 @@ public:
 private:
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
    
-   detail::header header_{};
+   detail::header_parser header_{};
 
    // sizes_[0] = 2 because the sentinel must be more than 1.
    static constexpr sizes_type default_sizes = {
