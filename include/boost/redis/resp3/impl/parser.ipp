@@ -56,15 +56,16 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
    if (view.size() == 0u)
      return {};
 
+   view.remove_prefix(consumed_); // TODO: Let the caller remove the prefix.
+
    if (!header_.done()) {
-      auto const offset = header_.empty() ? 1 : 0;
-      auto const foo = header_.write(view.substr(consumed_), ec);
+      auto const range = header_.write(view, ec);
       if (ec) {
          return {};
       }
 
-      std::string_view const data = view.substr(consumed_ + offset, foo - offset);
-      consumed_ += foo;
+      auto const data = view.substr(range.begin, range.size);
+      consumed_ += range.get_consumed();
 
       if (!header_.done()) {
          return {consumed_, {header_.t, 1, depth_, data}};
@@ -78,19 +79,17 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
          header_.reset();
          return {consumed_, ret};
       }
+
+      view.remove_prefix(range.get_consumed());
    }
 
-   auto const needed = header_.size + 2;
-   auto const available = view.size() - consumed_;
-
-   if (needed > available) {
-      auto const part = view.substr(consumed_);
-      consumed_ += part.size();
-      header_.size -= part.size();
-      return {consumed_, {header_.t, 1, depth_, part}};
+   if ((header_.size + 2) > view.size()) {
+      consumed_ += view.size();
+      header_.size -= view.size();
+      return {consumed_, {header_.t, 1, depth_, view}};
    }
 
-   auto const final_part = view.substr(consumed_, header_.size + 2u);
+   auto const final_part = view.substr(0, header_.size + 2u);
    consumed_ += final_part.size();
    node_type const ret = {header_.t, 1, depth_, final_part};
 

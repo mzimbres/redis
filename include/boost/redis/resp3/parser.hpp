@@ -37,6 +37,16 @@ void add_digit(std::size_t& result, unsigned char c, system::error_code& ec)
 }
 
 struct header_parser {
+   struct range {
+      std::size_t begin = 0;
+      std::size_t size = 0;
+
+      auto get_consumed() const noexcept
+      {
+         return begin + size;
+      }
+   };
+
    type t = type::invalid;
    std::size_t size = 0;
    std::size_t last_r_pos_ = 0;
@@ -133,8 +143,10 @@ struct header_parser {
       return false;
    }
 
-   std::size_t write(std::string_view data, system::error_code& ec)
+   range write(std::string_view data, system::error_code& ec)
    {
+      auto const offset = empty() ? 1u : 0u;
+
       std::size_t i = 0;
       for (; i < data.size() && !done(); ++i) {
          add(data[i], ec);
@@ -142,7 +154,7 @@ struct header_parser {
            return {};
       }
 
-      return i;
+      return range {offset, i - offset};
    }
 };
 
