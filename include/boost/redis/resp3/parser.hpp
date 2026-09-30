@@ -197,14 +197,21 @@ private:
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
 
-   // Returns the number of bytes that have been consumed.
-   auto process_header(std::string_view const& data, system::error_code& ec) -> node_type;
-
    void commit_elem() noexcept;
 
    std::string_view search_sep(std::string_view data, system::error_code& ec);
 
    bool is_delimiter(std::string_view data) const noexcept;
+
+   auto commit_and_return(std::string_view data = {}) noexcept -> result
+   {
+      node_type const ret = {header_.t, header_.size, depth_, data};
+      if (header_.size == 0u) {
+         commit_elem();
+         header_.reset();
+      }
+      return {consumed_, ret};
+   }
 
 public:
    parser();

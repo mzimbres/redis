@@ -71,81 +71,63 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
          return {consumed_, {header_.t, 1, depth_, data}};
       }
 
-      auto const ret = process_header(data, ec);
-      if (ec)
-         return {};
+      switch (header_.t) {
+         case type::streamed_string_part:
+         case type::blob_error:
+         case type::verbatim_string:
+         case type::blob_string:
+         {
+            view.remove_prefix(range.get_consumed());
+         } break;
+         case type::boolean:
+         case type::doublean:
+         case type::big_number:
+         case type::number:
+         case type::simple_error:
+         case type::simple_string:
+         case type::null:
+         case type::streamed_string:
+         {
+            return commit_and_return(data);
+         } break;
+         case type::push:
+         case type::set:
+         case type::array:
+         case type::attribute:
+         case type::map:
+         {
+            if (header_.size == 0u) {
+               return commit_and_return();
+            } else {
+               if (depth_ == max_embedded_depth) {
+                  ec = error::exceeeds_max_nested_depth;
+                  return {};
+               }
 
-      if (!is_bulk(header_.t)) {
-         header_.reset();
-         return {consumed_, ret};
+               node_type const ret = {header_.t, header_.size, depth_, {}};
+               sizes_[++depth_] = header_.get_agregate_length();
+               header_.reset();
+               return {consumed_, ret};
+            }
+         } break;
+         default:
+         {
+            BOOST_ASSERT(false);
+            return {};
+         }
       }
-
-      view.remove_prefix(range.get_consumed());
    }
 
    if ((header_.size + 2) > view.size()) {
       consumed_ += view.size();
       header_.size -= view.size();
-      return {consumed_, {header_.t, 1, depth_, view}};
+   } else {
+     view = view.substr(0, header_.size + 2u);
+     consumed_ += view.size();
+     header_.size = 0;
    }
 
-   auto const final_part = view.substr(0, header_.size + 2u);
-   consumed_ += final_part.size();
-   node_type const ret = {header_.t, 1, depth_, final_part};
-
-   header_.reset();
-   commit_elem();
-   return {consumed_, ret};
-}
-
-auto parser::process_header(std::string_view const& data, system::error_code& ec) -> parser::node_type
-{
-   switch (header_.t) {
-      case type::streamed_string_part:
-      case type::blob_error:
-      case type::verbatim_string:
-      case type::blob_string:
-      {
-         return {};
-      } break;
-      case type::boolean:
-      case type::doublean:
-      case type::big_number:
-      case type::number:
-      case type::simple_error:
-      case type::simple_string:
-      case type::null:
-      case type::streamed_string:
-      {
-         node_type const ret = {header_.t, 1, depth_, data};
-         commit_elem();
-         return ret;
-      } break;
-      case type::push:
-      case type::set:
-      case type::array:
-      case type::attribute:
-      case type::map:
-      {
-         node_type const ret = {header_.t, header_.size, depth_, {}};
-         if (header_.size == 0u) {
-            commit_elem();
-         } else {
-            if (depth_ == max_embedded_depth) {
-               ec = error::exceeeds_max_nested_depth;
-               return {};
-            }
-
-            sizes_[++depth_] = header_.get_agregate_length();
-         }
-         return ret;
-      } break;
-      default:
-      {
-         ec = error::invalid_data_type;
-         return {};
-      }
-   }
+   return commit_and_return(view);
 }
 
 bool parser::is_parsing() const noexcept
