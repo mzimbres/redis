@@ -55,11 +55,11 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
          return {};
       }
 
-      auto const data = view.substr(range.begin, range.size);
       consumed_ += range.get_consumed();
 
       if (!header_.done()) {
-         return {consumed_, {header_.t, 1, depth_, data}};
+         view = view.substr(range.begin, range.size);
+         return {consumed_, {header_.t, 1, depth_, view}};
       }
 
       switch (header_.t) {
@@ -68,37 +68,30 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
          case type::verbatim_string:
          case type::blob_string:
          {
-            view.remove_prefix(range.get_consumed());
+            view = view.substr(range.get_consumed(), header_.size);
+            consumed_ += view.size();
+            header_.size -= view.size();
          } break;
-         case type::boolean:
          case type::doublean:
          case type::big_number:
          case type::number:
          case type::simple_error:
          case type::simple_string:
-         case type::null:
+            view = view.substr(range.begin, range.size);
          case type::streamed_string:
-         case type::push:
+         case type::boolean:
+         case type::null:
          case type::set:
+         case type::push:
          case type::array:
          case type::attribute:
          case type::map:
-             return commit_and_return(data, ec);
-         default:
-         {
-            BOOST_ASSERT(false);
-            return {};
-         }
+         default: { }
       }
-   }
-
-   if ((header_.size + 2) > view.size()) {
+   } else {
+      view = view.substr(0, header_.size);
       consumed_ += view.size();
       header_.size -= view.size();
-   } else {
-     view = view.substr(0, header_.size + 2u);
-     consumed_ += view.size();
-     header_.size = 0;
    }
 
    return commit_and_return(view, ec);

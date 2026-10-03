@@ -53,11 +53,6 @@ struct header_parser {
    std::size_t pos_ = 0;
    bool done_ = false;
 
-   auto get_agregate_length() const noexcept
-   {
-      return size * element_multiplicity(t);
-   }
-
    bool done() const noexcept
    {
       return done_;
@@ -111,6 +106,7 @@ struct header_parser {
          case '9':
          {
             switch (t) {
+               case type::number:
                case type::streamed_string_part:
                case type::blob_error:
                case type::verbatim_string:
@@ -137,10 +133,69 @@ struct header_parser {
    {
       std::size_t offset = 0;
       if (pos_ == 0u && !data.empty()) {
-         t = to_type(data.front());
-         if (t == type::invalid) {
-            ec = redis::error::invalid_data_type;
-            return {};
+         switch (data.front()) {
+            case ':':
+               t = type::number;
+               break;
+            case ',':
+               t = type::doublean;
+               break;
+            case '#':
+               t = type::boolean;
+               break;
+            case '_':
+               t = type::null;
+               break;
+
+            // Simple types with a size, that is only known after \r\n arrives.
+            // We set it to max so it is not considered done. Part of this data
+            // can be passed to the user as it arrives.
+            case '+':
+               t = type::simple_string;
+               size = std::size_t(-1);
+               break;
+            case '-':
+               t = type::simple_error;
+               size = std::size_t(-1);
+               break;
+            case '(':
+               t = type::big_number;
+               size = std::size_t(-1);
+               break;
+
+            // Blob types
+            case '!':
+               t = type::blob_error;
+               break;
+            case '=':
+               t = type::verbatim_string;
+               break;
+            case '$':
+               t = type::blob_string;
+               break;
+            case ';':
+               t = type::streamed_string_part;
+               break;
+
+            // Aggregates
+            case '>':
+               t = type::push;
+               break;
+            case '~':
+               t = type::set;
+               break;
+            case '*':
+               t = type::array;
+               break;
+            case '|':
+               t = type::attribute;
+               break;
+            case '%':
+               t = type::map;
+               break;
+            default:
+               ec = redis::error::invalid_data_type;
+               return {};
          }
 
          offset = 1;
@@ -150,6 +205,33 @@ struct header_parser {
       std::size_t i = offset;
       for (; i < data.size() && !done(); ++i) {
          add(data[i]);
+      }
+
+      if (done()) {
+         switch (t) {
+            case type::streamed_string_part:
+            case type::blob_error:
+            case type::verbatim_string:
+            case type::blob_string:
+               size += 2; // To account for the \r\n at the end.
+               break;
+
+            case type::boolean:
+            case type::doublean:
+            case type::big_number:
+            case type::number:
+            case type::simple_error:
+            case type::simple_string:
+            case type::null:
+               size = 0;
+               break;
+
+            case type::attribute:
+            case type::map:
+               size *= 2u;
+               break;
+            default: { }
+         }
       }
 
       return range {offset, i - offset};
@@ -211,7 +293,7 @@ private:
             ec = error::exceeeds_max_nested_depth;
             return {};
          }
-         sizes_[++depth_] = header_.get_agregate_length();
+         sizes_[++depth_] = header_.size;
          header_.reset();
       }
 
