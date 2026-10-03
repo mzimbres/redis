@@ -495,6 +495,62 @@ void test_parse_set()
      BOOST_TEST_EQ(res.node.depth, 1u);
      BOOST_TEST(p.done());
    }
+
+   { std::string_view const data = "~1\r\n~1\r\n~1\r\n~1\r\n~1\r\n~1\r\n+one\r\n";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     // First node
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 4);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST(!p.done());
+
+     // Second node
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 8);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
+     BOOST_TEST_EQ(res.node.depth, 1u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST(!p.done());
+
+     // Third node
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 12);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
+     BOOST_TEST_EQ(res.node.depth, 2u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST(!p.done());
+
+     // Fourth node
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 16);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
+     BOOST_TEST_EQ(res.node.depth, 3u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST(!p.done());
+
+     // Fifth node
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 20);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
+     BOOST_TEST_EQ(res.node.depth, 4u);
+     BOOST_TEST_EQ(res.node.aggregate_size, 1u);
+     BOOST_TEST(!p.done());
+
+     // Sixth node
+     res = p.write(data, ec);
+     BOOST_TEST_EQ(ec, error::exceeeds_max_nested_depth);
+   }
 }
 
 void test_parse_map()
@@ -632,6 +688,44 @@ void test_parse_blob_string()
    using boost::redis::resp3::parser;
    using boost::redis::error;
    using boost::system::error_code;
+
+   { std::string_view const data = "$0\r\n\r\n";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     res = p.write(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 6);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.value, "\r\n");
+     BOOST_TEST(p.done());
+   }
+
+   { std::string_view const d1 = "$0\r", d2 = "$0\r\n\r", d3 = "$0\r\n\r\n";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     res = p.write(d1, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 3);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.value, "");
+     BOOST_TEST(!p.done());
+
+     res = p.write(d2, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(res.consumed, 2);
+     BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res.node.depth, 0u);
+     BOOST_TEST_EQ(res.node.value, "\r");
+     BOOST_TEST(!p.done());
+   }
 
    { std::string_view const data = "$11\r\nboost.redis\r\n<ignore>";
 

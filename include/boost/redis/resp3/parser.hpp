@@ -37,7 +37,7 @@ void add_digit(std::size_t& result, unsigned char c, system::error_code& ec)
 }
 
 struct header_parser {
-   struct range {
+    struct range {
       std::size_t begin = 0;
       std::size_t size = 0;
 
@@ -74,84 +74,82 @@ struct header_parser {
 
    bool empty() const noexcept
    {
-      return t == type::invalid;
+      return pos_ == 0u;
    }
 
-   bool add(unsigned char c, system::error_code& ec)
+   void add(unsigned char c)
    {
       BOOST_ASSERT(!done_);
 
-      if (pos_ == 0) {
-         t = to_type(c);
-         if (t == type::invalid) {
-            ec = redis::error::invalid_data_type;
-            return false;
-         }
-      } else {
-         switch (c) {
-            case '\n':
-            {
-               done_ = t != type::invalid && (last_r_pos_ + 1u) == pos_;
-               return done_;
-            } break;
+      switch (c) {
+         case '\n':
+         {
+            done_ = t != type::invalid && (last_r_pos_ + 1u) == pos_;
+         } break;
 
-            case '\r':
-            {
-               last_r_pos_ = pos_;
-            } break;
+         case '\r':
+         {
+            last_r_pos_ = pos_;
+         } break;
 
-            case '?':
-            {
-               if (pos_ == 1)
-                  t = type::streamed_string;
+         case '?':
+         {
+            if (pos_ == 1)
+               t = type::streamed_string;
 
-            } break;
+         } break;
 
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-            {
-               switch (t) {
-                  case type::streamed_string_part:
-                  case type::blob_error:
-                  case type::verbatim_string:
-                  case type::blob_string:
-                  case type::push:
-                  case type::set:
-                  case type::array:
-                  case type::attribute:
-                  case type::map:
-                  {
-                     // TODO: Use this to check for overflow.
-                     //static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
-                     size = size * 10 + (c - '0');
-                  } break;
-                  default: {}
-               }
-            } break;
-         }
+         case '0':
+         case '1':
+         case '2':
+         case '3':
+         case '4':
+         case '5':
+         case '6':
+         case '7':
+         case '8':
+         case '9':
+         {
+            switch (t) {
+               case type::streamed_string_part:
+               case type::blob_error:
+               case type::verbatim_string:
+               case type::blob_string:
+               case type::push:
+               case type::set:
+               case type::array:
+               case type::attribute:
+               case type::map:
+               {
+                  // TODO: Use this to check for overflow.
+                  //static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
+                  size = size * 10 + (c - '0');
+               } break;
+               default: {}
+            }
+         } break;
       }
 
       pos_ += 1;
-      return false;
    }
 
    range write(std::string_view data, system::error_code& ec)
    {
-      auto const offset = empty() ? 1u : 0u;
+      std::size_t offset = 0;
+      if (pos_ == 0u && !data.empty()) {
+         t = to_type(data.front());
+         if (t == type::invalid) {
+            ec = redis::error::invalid_data_type;
+            return {};
+         }
 
-      std::size_t i = 0;
+         offset = 1;
+         ++pos_;
+      }
+
+      std::size_t i = offset;
       for (; i < data.size() && !done(); ++i) {
-         add(data[i], ec);
-         if (ec)
-           return {};
+         add(data[i]);
       }
 
       return range {offset, i - offset};
@@ -197,19 +195,26 @@ private:
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
 
-   void commit_elem() noexcept;
-
-   std::string_view search_sep(std::string_view data, system::error_code& ec);
-
-   bool is_delimiter(std::string_view data) const noexcept;
-
-   auto commit_and_return(std::string_view data = {}) noexcept -> result
+   auto commit_and_return(std::string_view data, system::error_code& ec) noexcept -> result
    {
       node_type const ret = {header_.t, header_.size, depth_, data};
       if (header_.size == 0u) {
-         commit_elem();
+         --sizes_[depth_];
+         while (sizes_[depth_] == 0) {
+            --depth_;
+            --sizes_[depth_];
+         }
+
+         header_.reset();
+      } else if (is_aggregate(header_.t)) {
+         if (depth_ == max_embedded_depth) {
+            ec = error::exceeeds_max_nested_depth;
+            return {};
+         }
+         sizes_[++depth_] = header_.get_agregate_length();
          header_.reset();
       }
+
       return {consumed_, ret};
    }
 

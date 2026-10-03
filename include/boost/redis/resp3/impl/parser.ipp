@@ -41,15 +41,6 @@ bool parser::done() const noexcept
           header_.empty();
 }
 
-void parser::commit_elem() noexcept
-{
-   --sizes_[depth_];
-   while (sizes_[depth_] == 0) {
-      --depth_;
-      --sizes_[depth_];
-   }
-}
-
 auto parser::write(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
    // TODO: Can we avoid this check?
@@ -87,29 +78,12 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
          case type::simple_string:
          case type::null:
          case type::streamed_string:
-         {
-            return commit_and_return(data);
-         } break;
          case type::push:
          case type::set:
          case type::array:
          case type::attribute:
          case type::map:
-         {
-            if (header_.size == 0u) {
-               return commit_and_return();
-            } else {
-               if (depth_ == max_embedded_depth) {
-                  ec = error::exceeeds_max_nested_depth;
-                  return {};
-               }
-
-               node_type const ret = {header_.t, header_.size, depth_, {}};
-               sizes_[++depth_] = header_.get_agregate_length();
-               header_.reset();
-               return {consumed_, ret};
-            }
-         } break;
+             return commit_and_return(data, ec);
          default:
          {
             BOOST_ASSERT(false);
@@ -127,7 +101,7 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
      header_.size = 0;
    }
 
-   return commit_and_return(view);
+   return commit_and_return(view, ec);
 }
 
 bool parser::is_parsing() const noexcept
