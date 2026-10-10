@@ -260,7 +260,7 @@ void test_parse_number()
 
      parser p;
      error_code ec;
-     auto const res = p.write(data, ec);
+     auto const res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 5);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
@@ -273,7 +273,7 @@ void test_parse_number()
 
      parser p;
      error_code ec;
-     auto const res = p.write(data, ec);
+     auto const res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 6);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
@@ -286,7 +286,7 @@ void test_parse_number()
 
      parser p;
      error_code ec;
-     auto const res = p.write(data, ec);
+     auto const res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 6);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
@@ -302,14 +302,14 @@ void test_parse_number()
      parser::result res;
 
      // Part 1
-     res = p.write(data1, ec);
+     res = p.consume(data1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 5);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
      BOOST_TEST(!p.done());
 
      // Part 2
-     res = p.write(data2, ec);
+     res = p.consume(data2, ec);
      BOOST_TEST_EQ(res.consumed, 12);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res.node.depth, 0u);
@@ -324,7 +324,7 @@ void test_parse_number()
      parser::result res;
 
      // Part 1
-     res = p.write(data1, ec);
+     res = p.consume(data1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 3);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
@@ -332,7 +332,7 @@ void test_parse_number()
 
      // Part 2
      p.rewind();
-     res = p.write(data2, ec);
+     res = p.consume(data2, ec);
      BOOST_TEST_EQ(res.consumed, 4);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res.node.depth, 0u);
@@ -371,7 +371,7 @@ void test_parse_simple_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 6);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -386,7 +386,7 @@ void test_parse_simple_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 11);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -401,7 +401,7 @@ void test_parse_simple_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(data1, ec);
+     res = p.consume(data1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 9);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -410,7 +410,7 @@ void test_parse_simple_string()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(data2, ec);
+     res = p.consume(data2, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -433,7 +433,7 @@ void test_parse_set()
      parser::result res;
 
      // First node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 4);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -442,7 +442,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Second node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 10);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -451,7 +451,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Third node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 15);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
@@ -467,7 +467,7 @@ void test_parse_set()
      parser::result res;
 
      // First node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 4);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -475,7 +475,7 @@ void test_parse_set()
      BOOST_TEST_EQ(res.node.aggregate_size, 2u);
      BOOST_TEST(!p.done());
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 8);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -483,21 +483,21 @@ void test_parse_set()
      BOOST_TEST_EQ(res.node.aggregate_size, 2u);
      BOOST_TEST(!p.done());
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 14);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res.node.depth, 2u);
      BOOST_TEST(!p.done());
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 19);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res.node.depth, 2u);
      BOOST_TEST(!p.done());
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 24);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::number);
@@ -512,7 +512,7 @@ void test_parse_set()
      parser::result res;
 
      // First node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 4);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -521,7 +521,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Second node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 8);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -530,7 +530,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Third node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 12);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -539,7 +539,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Fourth node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 16);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -548,7 +548,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Fifth node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 20);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::set);
@@ -557,7 +557,7 @@ void test_parse_set()
      BOOST_TEST(!p.done());
 
      // Sixth node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST_EQ(ec, error::exceeeds_max_nested_depth);
    }
 }
@@ -575,7 +575,7 @@ void test_parse_map()
      parser::result res;
 
      // First node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(p.get_consumed(), 4);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::map);
@@ -584,7 +584,7 @@ void test_parse_map()
      BOOST_TEST(!p.done());
 
      // Second node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(p.get_consumed(), 11);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -593,7 +593,7 @@ void test_parse_map()
      BOOST_TEST(!p.done());
 
      // Third node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(p.get_consumed(), 20);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -602,7 +602,7 @@ void test_parse_map()
      BOOST_TEST(!p.done());
 
      // Fourth node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(p.get_consumed(), 27);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -611,7 +611,7 @@ void test_parse_map()
      BOOST_TEST(!p.done());
 
      // Fifth node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(p.get_consumed(), 36);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::simple_string);
@@ -627,7 +627,7 @@ void test_parse_map()
      parser::result res;
 
      // First node
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(p.get_consumed(), 4);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::map);
@@ -648,7 +648,7 @@ void test_parse_streamed_string()
      error_code ec;
      parser::result res;
 
-     res = p.write("$?\r\n", ec);
+     res = p.consume("$?\r\n", ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::streamed_string);
      BOOST_TEST_EQ(res.node.depth, 0u);
@@ -656,7 +656,7 @@ void test_parse_streamed_string()
      BOOST_TEST(p.done());
 
      p.reset();
-     res = p.write(";5\r\n12345\r\n", ec);
+     res = p.consume(";5\r\n12345\r\n", ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::streamed_string_part);
      BOOST_TEST_EQ(res.node.depth, 0u);
@@ -678,7 +678,7 @@ void test_parse_blob_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 6);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -693,14 +693,14 @@ void test_parse_blob_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(d1, ec);
+     res = p.consume(d1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 3);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d2, ec);
+     res = p.consume(d2, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 2);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -709,7 +709,7 @@ void test_parse_blob_string()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d3, ec);
+     res = p.consume(d3, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -724,7 +724,7 @@ void test_parse_blob_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(data, ec);
+     res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 18);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -739,7 +739,7 @@ void test_parse_blob_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(d1, ec);
+     res = p.consume(d1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 9);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -748,7 +748,7 @@ void test_parse_blob_string()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d2, ec);
+     res = p.consume(d2, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 6);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -757,7 +757,7 @@ void test_parse_blob_string()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d3, ec);
+     res = p.consume(d3, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 3);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -772,21 +772,21 @@ void test_parse_blob_string()
      error_code ec;
      parser::result res;
 
-     res = p.write(d1, ec);
+     res = p.consume(d1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 3);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d2, ec);
+     res = p.consume(d2, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 3);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d3, ec);
+     res = p.consume(d3, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::blob_string);
@@ -804,7 +804,7 @@ void test_parse_null()
 
      parser p;
      error_code ec;
-     auto const res = p.write(data, ec);
+     auto const res = p.consume(data, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 3);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::null);
@@ -818,7 +818,7 @@ void test_parse_null()
      error_code ec;
      parser::result res;
 
-     res = p.write(d1, ec);
+     res = p.consume(d1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
@@ -826,7 +826,7 @@ void test_parse_null()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d2, ec);
+     res = p.consume(d2, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 2);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::null);
@@ -840,7 +840,7 @@ void test_parse_null()
      error_code ec;
      parser::result res;
 
-     res = p.write(d1, ec);
+     res = p.consume(d1, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
@@ -848,7 +848,7 @@ void test_parse_null()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d2, ec);
+     res = p.consume(d2, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::invalid);
@@ -856,7 +856,7 @@ void test_parse_null()
      BOOST_TEST(!p.done());
 
      p.rewind();
-     res = p.write(d3, ec);
+     res = p.consume(d3, ec);
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res.consumed, 1);
      BOOST_TEST_EQ(res.node.data_type, boost::redis::resp3::type::null);

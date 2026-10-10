@@ -58,7 +58,7 @@ private:
 
    void commit_and_return(system::error_code& ec) noexcept;
 
-   void commit() noexcept;
+   void commit_elem() noexcept;
 
 public:
    parser();
@@ -69,7 +69,7 @@ public:
 
    auto get_consumed() const noexcept -> std::size_t;
 
-   auto write(std::string_view view, system::error_code& ec) noexcept -> result;
+   auto consume(std::string_view view, system::error_code& ec) noexcept -> result;
 
    void reset();
 
@@ -89,7 +89,7 @@ std::size_t write(parser& p, std::string_view const& msg, Adapter& adapter, syst
       adapter.on_init();
 
    while (!p.done()) {
-      auto const res = p.write(msg, ec);
+      auto const res = p.consume(msg, ec);
       if (ec)
          return 0;
 

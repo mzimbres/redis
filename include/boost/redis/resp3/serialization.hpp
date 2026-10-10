@@ -118,7 +118,7 @@ void deserialize(std::string_view const& data, Adapter adapter, system::error_co
 
    parser parser;
    while (!parser.done()) {
-      auto const res = parser.write(data, ec);
+      auto const res = parser.consume(data, ec);
       if (ec)
          return;
 

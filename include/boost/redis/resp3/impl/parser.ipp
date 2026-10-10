@@ -17,19 +17,10 @@
 
 namespace boost::redis::resp3 {
 
-void parser::commit() noexcept
-{
-   --sizes_[depth_];
-   while (sizes_[depth_] == 0) {
-      --depth_;
-      --sizes_[depth_];
-   }
-}
-
 void parser::commit_and_return(system::error_code& ec) noexcept
 {
    if (header_.size_ == 0u || header_.type_ == type::number) {
-      commit();
+      commit_elem();
       header_.reset();
    } else if (is_aggregate(header_.type_)) {
       if (depth_ == max_embedded_depth) {
@@ -65,7 +56,17 @@ bool parser::done() const noexcept
           header_.empty();
 }
 
-auto parser::write(std::string_view view, system::error_code& ec) noexcept -> parser::result
+void parser::commit_elem() noexcept
+{
+   --sizes_[depth_];
+   while (sizes_[depth_] == 0) {
+      --depth_;
+      --sizes_[depth_];
+   }
+}
+
+
+auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
    // TODO: Can we avoid this check?
    if (view.size() == 0u)
@@ -82,7 +83,7 @@ auto parser::write(std::string_view view, system::error_code& ec) noexcept -> pa
       ret.depth = depth_;
       ret.value = view;
       if (ret.aggregate_size == 0u) {
-         commit();
+         commit_elem();
          header_.reset();
       }
 
