@@ -36,7 +36,7 @@ using boost::redis::ignore;
 using boost::redis::ignore_t;
 using boost::redis::adapter::result;
 using boost::redis::resp3::parser;
-using boost::redis::resp3::write;
+using boost::redis::resp3::parse;
 using boost::redis::consume_one;
 using boost::redis::error;
 
@@ -110,13 +110,14 @@ void test_sync(expect<Result> e)
    Result result;
    auto adapter = adapt2(result);
    error_code ec;
-   auto const res = write(p, e.in, adapter, ec);
+   auto const res = parse(p, e.in, adapter, ec);
+
+   BOOST_TEST(res);  // None of these tests need more data.
+
    if (ec) {
       BOOST_TEST_EQ(ec, e.ec);
       return;
    }
-
-   BOOST_TEST(p.done());  // None of these tests need more data.
 
    if (result.has_value()) {
       BOOST_TEST(bool(result == e.expected));
@@ -133,7 +134,7 @@ void test_sync2(expect<Result> e)
    Result result;
    auto adapter = adapt2(result);
    error_code ec;
-   auto const res = write(p, e.in, adapter, ec);
+   auto const res = parse(p, e.in, adapter, ec);
 
    if (e.ec) {
      BOOST_TEST_EQ(ec, e.ec);

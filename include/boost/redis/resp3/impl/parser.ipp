@@ -87,7 +87,7 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
          header_.reset();
       }
 
-      return {consumed_, ret};
+      return ret;
    } else {
       auto res = header_.write(view, ec);
       if (ec) {
@@ -97,12 +97,12 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
       consumed_ += res.consumed;
 
       if (res.node.data_type == type::invalid) {
-         return {consumed_, {}};
+         return std::nullopt;
       }
 
       res.node.depth = depth_;
       commit_and_return(ec);
-      return {consumed_, res.node};
+      return res.node;
    }
 }
 

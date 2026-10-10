@@ -122,9 +122,9 @@ void deserialize(std::string_view const& data, Adapter adapter, system::error_co
       if (ec)
          return;
 
-      BOOST_ASSERT(res.consumed != 0);
+      BOOST_ASSERT(res.has_value());
 
-      adapter.on_node(res.node, ec);
+      adapter.on_node(res.value(), ec);
       if (ec)
          return;
    }

@@ -23,12 +23,8 @@ namespace boost::redis::resp3 {
 
 class parser {
 public:
-   struct result {
-     // When this number is zero more data is needed.
-     std::size_t consumed = 0;
-
-     node_view node;
-   };
+   using node_type = basic_node<std::string_view>;
+   using result = std::optional<node_type>;
 
    static constexpr std::size_t max_embedded_depth = 5;
    static constexpr std::string_view sep = "\r\n";
@@ -78,10 +74,11 @@ public:
    void rewind();
 };
 
-// Returns the number of bytes consumed from the buffer, where zero means more
-// data is needed.
+// Returns false if more data is needed. If true is returned the
+// parser is either done or an error occured, that can be checked on
+// ec.
 template <class Adapter>
-std::size_t write(parser& p, std::string_view const& msg, Adapter& adapter, system::error_code& ec)
+bool parse(parser& p, std::string_view const& msg, Adapter& adapter, system::error_code& ec)
 {
    // This if could be avoid with a state machine that jumps into the
    // correct position.
@@ -91,15 +88,18 @@ std::size_t write(parser& p, std::string_view const& msg, Adapter& adapter, syst
    while (!p.done()) {
       auto const res = p.consume(msg, ec);
       if (ec)
-         return 0;
+         return true;
 
-      adapter.on_node(res.node, ec);
+      if (!res)
+         return false;
+
+      adapter.on_node(res.value(), ec);
       if (ec)
-         return 0;
+         return true;
    }
 
    adapter.on_done();
-   return p.get_consumed();
+   return true;
 }
 
 }  // namespace boost::redis::resp3

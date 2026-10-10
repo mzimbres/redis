@@ -36,16 +36,16 @@ void test_success()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool n = resp3::write(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // Response to the SELECT command
    p.reset();
-   n = resp3::write(p, "+OK\r\n", adapter, ec);
+   done = resp3::parse(p, "+OK\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // No diagnostic
@@ -63,10 +63,10 @@ void test_simple_error()
    // Response to HELLO contains an error
    resp3::parser p;
    error_code ec;
-   bool const n = resp3::write(p, "-ERR unauthorized\r\n", adapter, ec);
+   bool done = resp3::parse(p, "-ERR unauthorized\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::resp3_hello);
    BOOST_TEST_EQ(st.diagnostic, "ERR unauthorized");
-   BOOST_TEST(n == 0);
 }
 
 void test_blob_error()
@@ -81,14 +81,15 @@ void test_blob_error()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool n = resp3::write(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
    BOOST_TEST(p.done());
-   BOOST_TEST(n != 0);
 
    // Response to select contains an error
    p.reset();
-   n = resp3::write(p, "!3\r\nBad\r\n", adapter, ec);
+   done = resp3::parse(p, "!3\r\nBad\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::resp3_hello);
    BOOST_TEST_EQ(st.diagnostic, "Bad");
 }
@@ -105,9 +106,9 @@ void test_null()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool const n = resp3::write(p, "_\r\n", adapter, ec);
+   bool done = resp3::parse(p, "_\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // No diagnostic
@@ -138,23 +139,23 @@ void test_sentinel_master()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool n = resp3::write(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // Response to the SELECT command
    p.reset();
-   n = resp3::write(p, "+OK\r\n", adapter, ec);
+   done = resp3::parse(p, "+OK\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
-   n = resp3::write(p, role_master_response, adapter, ec);
+   done = resp3::parse(p, role_master_response, adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // No diagnostic
@@ -176,16 +177,16 @@ void test_sentinel_replica()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool n = resp3::write(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
-   n = resp3::write(p, role_replica_response, adapter, ec);
+   done = resp3::parse(p, role_replica_response, adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // No diagnostic
@@ -207,14 +208,15 @@ void test_sentinel_role_check_failed_master()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool n = resp3::write(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
-   n = resp3::write(p, role_replica_response, adapter, ec);
+   done = resp3::parse(p, role_replica_response, adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::role_check_failed);
 
    // No diagnostic
@@ -236,14 +238,15 @@ void test_sentinel_role_check_failed_replica()
    // Response to HELLO
    resp3::parser p;
    error_code ec;
-   bool n = resp3::write(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   bool done = resp3::parse(p, "%1\r\n$6\r\nserver\r\n$5\r\nredis\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error_code());
-   BOOST_TEST(n != 0);
    BOOST_TEST(p.done());
 
    // Response to the ROLE command
    p.reset();
-   n = resp3::write(p, role_master_response, adapter, ec);
+   done = resp3::parse(p, role_master_response, adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::role_check_failed);
 
    // No diagnostic
@@ -266,10 +269,10 @@ void test_sentinel_role_error_node()
    // Response to ROLE
    resp3::parser p;
    error_code ec;
-   bool const n = resp3::write(p, "-ERR unauthorized\r\n", adapter, ec);
+   bool done = resp3::parse(p, "-ERR unauthorized\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::resp3_hello);
    BOOST_TEST_EQ(st.diagnostic, "ERR unauthorized");
-   BOOST_TEST(n == 0);
 }
 
 void test_sentinel_role_not_array()
@@ -287,10 +290,10 @@ void test_sentinel_role_not_array()
    // Response to ROLE
    resp3::parser p;
    error_code ec;
-   bool const n = resp3::write(p, "+OK\r\n", adapter, ec);
+   bool done = resp3::parse(p, "+OK\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::invalid_data_type);
    BOOST_TEST_EQ(st.diagnostic, "");
-   BOOST_TEST(n == 0);
 }
 
 void test_sentinel_role_empty_array()
@@ -308,10 +311,10 @@ void test_sentinel_role_empty_array()
    // Response to ROLE
    resp3::parser p;
    error_code ec;
-   bool const n = resp3::write(p, "*0\r\n", adapter, ec);
+   bool done = resp3::parse(p, "*0\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::incompatible_size);
    BOOST_TEST_EQ(st.diagnostic, "");
-   BOOST_TEST(n == 0);
 }
 
 void test_sentinel_role_first_element_not_string()
@@ -329,10 +332,10 @@ void test_sentinel_role_first_element_not_string()
    // Response to ROLE
    resp3::parser p;
    error_code ec;
-   bool const n = resp3::write(p, "*1\r\n:2000\r\n", adapter, ec);
+   bool done = resp3::parse(p, "*1\r\n:2000\r\n", adapter, ec);
+   BOOST_TEST(done);
    BOOST_TEST_EQ(ec, error::invalid_data_type);
    BOOST_TEST_EQ(st.diagnostic, "");
-   BOOST_TEST(n == 0);
 }
 
 }  // namespace
