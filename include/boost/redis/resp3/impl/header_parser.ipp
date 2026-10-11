@@ -184,16 +184,19 @@ node_view header_parser::write(std::string_view data, system::error_code& ec)
          case type::verbatim_string:
          case type::blob_string:
          {
-            size_ += 2; // To account for the \r\n at the end.
             auto const available = data.size() - i;
-            if (size_ > available ) {
-               size_ -= available;
-               auto const view = data.substr(i, available);
-               return {type_, size_, i + available, view};
-            } else {
+            if ((size_ + 2) > available) {
                auto const view = data.substr(i, size_);
-               node_view const ret = {type_, size_, i + size_, view};
-               size_ = 0; // To be considered done.
+               size_ -= view.size();
+               node_view const ret = {type_, size_, i + available, view};
+               auto const diff = size_ + 2 - available;
+               size_ += diff; // To account for the \r\n at the end.
+               return ret;
+            } else {
+               // Done
+               auto const view = data.substr(i, size_);
+               node_view const ret = {type_, size_, i + size_ + 2, view};
+               size_ = 0; // Marks done
                return ret;
             }
          } break;

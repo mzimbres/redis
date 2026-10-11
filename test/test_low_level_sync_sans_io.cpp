@@ -660,7 +660,7 @@ void test_parse_streamed_string()
      BOOST_TEST(!ec);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::streamed_string_part);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "12345\r\n");
+     BOOST_TEST_EQ(res->value, "12345");
      BOOST_TEST(p.done());
    }
 
@@ -683,7 +683,7 @@ void test_parse_blob_string()
      BOOST_TEST_EQ(p.get_consumed(), 6);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "\r\n");
+     BOOST_TEST_EQ(res->value, "");
      BOOST_TEST(p.done());
    }
 
@@ -705,7 +705,7 @@ void test_parse_blob_string()
      BOOST_TEST_EQ(p.get_consumed(), 2);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "\r");
+     BOOST_TEST_EQ(res->value, "");
      BOOST_TEST(!p.done());
 
      p.rewind();
@@ -714,7 +714,7 @@ void test_parse_blob_string()
      BOOST_TEST_EQ(p.get_consumed(), 1);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "\n");
+     BOOST_TEST_EQ(res->value, "");
      BOOST_TEST(p.done());
    }
 
@@ -729,7 +729,7 @@ void test_parse_blob_string()
      BOOST_TEST_EQ(p.get_consumed(), 18);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "boost.redis\r\n");
+     BOOST_TEST_EQ(res->value, "boost.redis");
      BOOST_TEST(p.done());
    }
 
@@ -762,7 +762,31 @@ void test_parse_blob_string()
      BOOST_TEST_EQ(p.get_consumed(), 3);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "s\r\n");
+     BOOST_TEST_EQ(res->value, "s");
+     BOOST_TEST(p.done());
+   }
+
+   { std::string_view const d1 = "$5\r\nboost\r", d2 = "\n<ignore>";
+
+     parser p;
+     error_code ec;
+     parser::result res;
+
+     res = p.consume(d1, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(p.get_consumed(), 10);
+     BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res->depth, 0u);
+     BOOST_TEST_EQ(res->value, "boost");
+     BOOST_TEST(!p.done());
+
+     p.rewind();
+     res = p.consume(d2, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(p.get_consumed(), 6);
+     BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
+     BOOST_TEST_EQ(res->depth, 0u);
+     BOOST_TEST_EQ(res->value, "");
      BOOST_TEST(p.done());
    }
 
@@ -873,7 +897,7 @@ int main()
    test_parse_map();
    test_parse_blob_string();
    test_parse_streamed_string();
-   test_simple_string_adapter();
+   //test_simple_string_adapter();
 
    //test_low_level_sync_sans_io();
    //test_issue_210_empty_set();

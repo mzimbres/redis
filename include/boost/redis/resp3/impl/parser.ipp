@@ -82,7 +82,9 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
 
       auto ret = header_.make_node();
       ret.depth = depth_;
-      ret.value = view;
+      if (view.size() > 2) {
+         ret.value = view;
+      }
       if (ret.aggregate_size == 0u) {
          commit_elem();
          header_.reset();
