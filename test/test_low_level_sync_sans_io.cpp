@@ -218,7 +218,7 @@ void test_check_counter_adapter()
    int node = 0;
    int done = 0;
 
-   auto counter_adapter = [&](any_adapter::parse_event ev, node_view const&, error_code&) mutable {
+   auto counter_adapter = [&](any_adapter::parse_event ev, node_view const& nd, error_code&) mutable {
       switch (ev) {
          case any_adapter::parse_event::init: init++; break;
          case any_adapter::parse_event::node: node++; break;
@@ -246,7 +246,7 @@ void test_check_counter_adapter()
    BOOST_TEST(ret4);
 
    BOOST_TEST_EQ(init, 1);
-   BOOST_TEST_EQ(node, 7);
+   BOOST_TEST_EQ(node, 10);
    BOOST_TEST_EQ(done, 1);
 }
 
@@ -873,7 +873,7 @@ int main()
    test_parse_map();
    test_parse_blob_string();
    test_parse_streamed_string();
-   //test_simple_string_adapter();
+   test_simple_string_adapter();
 
    //test_low_level_sync_sans_io();
    //test_issue_210_empty_set();
@@ -882,7 +882,7 @@ int main()
    //test_issue_210_no_nested();
    //test_issue_233_array_with_null();
    //test_issue_233_optional_array_with_null();
-   //test_check_counter_adapter();
+   test_check_counter_adapter();
 
    return boost::report_errors();
 }

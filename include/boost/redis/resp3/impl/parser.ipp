@@ -68,11 +68,12 @@ void parser::commit_elem() noexcept
 
 auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> parser::result
 {
-   // TODO: Can we avoid this check?
-   if (view.size() == 0u)
-     return {};
+   BOOST_ASSERT(view.size() >= consumed_);
 
-   view.remove_prefix(consumed_); // TODO: Let the caller remove the prefix.
+   view.remove_prefix(consumed_);
+
+   if (view.size() == 0u)
+      return std::nullopt;
 
    if (header_.done()) {
       view = view.substr(0, header_.size_);

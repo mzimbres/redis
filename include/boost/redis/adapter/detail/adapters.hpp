@@ -96,6 +96,7 @@ struct converter<double, false> {
    }
 };
 
+// TODO: Remove this
 template <class CharT, class Traits, class Allocator>
 struct converter<std::basic_string<CharT, Traits, Allocator>, false> {
    template <class String>
@@ -306,6 +307,49 @@ public:
 };
 
 template <class Result>
+class string_impl {
+public:
+   void on_value_available(Result&) { }
+
+   void on_init() { }
+   void on_done() { }
+
+   template <class String>
+   void on_node(Result& res, resp3::basic_node<String> const& node, system::error_code& ec)
+   {
+      switch (node.data_type) {
+         case resp3::type::blob_error:
+         case resp3::type::verbatim_string:
+         case resp3::type::blob_string:
+         case resp3::type::streamed_string_part:
+         {
+            res.append(node.value);
+         } break;
+
+         case resp3::type::simple_error:
+         case resp3::type::doublean:
+         case resp3::type::boolean:
+         case resp3::type::big_number:
+         case resp3::type::simple_string:
+         case resp3::type::null:
+         {
+            res.append(node.value);
+
+            auto const size = res.size();
+            if (size >= 2u && res[size - 2] == '\r' && res[size - 1] == '\n') {
+               res.resize(size - 2); // Remove \r\n at the end.
+            }
+         } break;
+
+         default:
+         {
+            ec = redis::error::invalid_data_type;
+         }
+      }
+   }
+};
+
+template <class Result>
 class simple_impl {
 public:
    void on_value_available(Result&) { }
@@ -487,6 +531,11 @@ struct list_impl {
 template <class T>
 struct impl_map {
    using type = simple_impl<T>;
+};
+
+template <class CharT, class Traits, class Allocator>
+struct impl_map<std::basic_string<CharT, Traits, Allocator>> {
+   using type = string_impl<std::basic_string<CharT, Traits, Allocator>>;
 };
 
 template <class Key, class Compare, class Allocator>
