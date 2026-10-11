@@ -94,15 +94,15 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
          return {};
       }
 
-      consumed_ += res.consumed;
+      consumed_ += res.depth;
 
-      if (res.node.data_type == type::invalid) {
+      if (res.data_type == type::invalid) {
          return std::nullopt;
       }
 
-      res.node.depth = depth_;
+      res.depth = depth_;
       commit_and_return(ec);
-      return res.node;
+      return res;
    }
 }
 

@@ -156,7 +156,7 @@ void header_parser::set_type(char c, system::error_code& ec)
    }
 }
 
-header_parser::result header_parser::write(std::string_view data, system::error_code& ec)
+node_view header_parser::write(std::string_view data, system::error_code& ec)
 {
    std::size_t offset = 0;
    if (pos_ == 0u && !data.empty()) {
@@ -189,10 +189,10 @@ header_parser::result header_parser::write(std::string_view data, system::error_
             if (size_ > available ) {
                size_ -= available;
                auto const view = data.substr(i, available);
-               return {{type_, size_, 0, view}, i + available};
+               return {type_, size_, i + available, view};
             } else {
                auto const view = data.substr(i, size_);
-               result const ret = {{type_, size_, 0, view}, i + size_};
+               node_view const ret = {type_, size_, i + size_, view};
                size_ = 0; // To be considered done.
                return ret;
             }
@@ -206,25 +206,25 @@ header_parser::result header_parser::write(std::string_view data, system::error_
          {
             size_ = 0;
             auto const view = data.substr(offset, i - offset);
-            return {{type_, size_, 0, view}, i};
+            return {type_, size_, i, view};
          }
 
          case type::attribute:
          case type::map:
          {
             size_ *= 2u;
-            return {{type_, size_, 0, {}}, i};
+            return {type_, size_, i, {}};
          }
          case type::number:
          {
             //size_ *= sign_; // TODO: size must be signed.
             auto const view = data.substr(offset, i - offset);
-            return {{type_, size_, 0, view}, i};
+            return {type_, size_, i, view};
          } break;
          case type::boolean:
          default:
          {
-            return {{type_, size_, 0, {}}, i};
+            return {type_, size_, i, {}};
          }
       }
    } else {
@@ -234,11 +234,12 @@ header_parser::result header_parser::write(std::string_view data, system::error_
          case type::big_number:
          {
             auto const view = data.substr(offset, i - offset);
-            return {{type_, size_, 0, view}, i};
+            return {type_, size_, i, view};
          } break;
          default:
          {
-            return {{}, i};
+            // Needs more
+            return {{type::invalid}, {}, i, {}};
          }
       }
    }

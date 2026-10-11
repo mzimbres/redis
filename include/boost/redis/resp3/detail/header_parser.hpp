@@ -17,11 +17,6 @@
 namespace boost::redis::resp3::detail {
 
 struct header_parser {
-   struct result {
-      node_view node;
-      std::size_t consumed = 0;
-   };
-
    type type_ = type::invalid;
    std::size_t size_ = 0;
    std::size_t pos_ = 0;
@@ -38,7 +33,10 @@ struct header_parser {
    // public
    void reset();
    node_view make_node();
-   result write(std::string_view data, system::error_code& ec);
+
+   // To avoid extending the return type with yet another field, the
+   // node_view::depth with be set with the consumed bytes.
+   node_view write(std::string_view data, system::error_code& ec);
 };
 
 }  // namespace boost::redis::resp3::detail
