@@ -184,21 +184,16 @@ node_view header_parser::write(std::string_view data, system::error_code& ec)
          case type::verbatim_string:
          case type::blob_string:
          {
-            auto const available = data.size() - i;
-            if ((size_ + 2) > available) {
-               auto const view = data.substr(i, size_);
-               size_ -= view.size();
-               node_view const ret = {type_, size_, i + available, view};
-               auto const diff = size_ + 2 - available;
-               size_ += diff; // To account for the \r\n at the end.
-               return ret;
-            } else {
-               // Done
-               auto const view = data.substr(i, size_);
-               node_view const ret = {type_, size_, i + size_ + 2, view};
-               size_ = 0; // Marks done
-               return ret;
+            auto const view = data.substr(i, size_);
+
+            auto end = i + size_ + 2;
+            size_ = 0;
+            if (end > data.size()) {
+               size_ = end - data.size();
+               end = data.size();
             }
+
+            return {type_, size_, end, view};
          } break;
 
          case type::doublean:
@@ -253,7 +248,7 @@ node_view header_parser::write(std::string_view data, system::error_code& ec)
 
 node_view header_parser::make_node()
 {
-   return {type_, size_,  0u,  {}};
+   return {type_, size_, 0, {}};
 }
 
 bool header_parser::done() const noexcept
