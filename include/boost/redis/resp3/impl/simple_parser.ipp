@@ -210,10 +210,17 @@ node_view simple_parser::handle_header(std::string_view data, system::error_code
          case type::big_number:
          case type::simple_error:
          case type::simple_string:
-         case type::null:
          {
+            std::size_t str_size = i - offset;
+
+            if (str_size > 1) {
+               str_size -= 2;
+            } else {
+               str_size -= 1;
+            }
+
+            auto const view = data.substr(offset, str_size);
             size_ = 0;
-            auto const view = data.substr(offset, i - offset);
             return {type_, size_, i, view};
          }
 
@@ -259,6 +266,7 @@ node_view simple_parser::handle_blob_part(std::string_view view)
    size_ -= view.size();
 
    auto const consumed = view.size();
+
    if (size_ == 1) {
       view.remove_suffix(1);
    } else if (size_ == 0) {

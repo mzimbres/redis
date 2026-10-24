@@ -419,7 +419,7 @@ void test_parse_simple_string()
      BOOST_TEST_EQ(p.get_consumed(), 1);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "\n");
+     BOOST_TEST_EQ(res->value, "");
      BOOST_TEST(p.done());
    }
 }
@@ -451,7 +451,7 @@ void test_parse_set()
      BOOST_TEST_EQ(p.get_consumed(), 10);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 1u);
-     BOOST_TEST_EQ(res->value, "one\r\n");
+     BOOST_TEST_EQ(res->value, "one");
      BOOST_TEST(!p.done());
 
      // Third node
@@ -593,7 +593,7 @@ void test_parse_map()
      BOOST_TEST_EQ(p.get_consumed(), 11);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 1u);
-     BOOST_TEST_EQ(res->value, "key1\r\n");
+     BOOST_TEST_EQ(res->value, "key1");
      BOOST_TEST(!p.done());
 
      // Third node
@@ -602,7 +602,7 @@ void test_parse_map()
      BOOST_TEST_EQ(p.get_consumed(), 20);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 1u);
-     BOOST_TEST_EQ(res->value, "value1\r\n");
+     BOOST_TEST_EQ(res->value, "value1");
      BOOST_TEST(!p.done());
 
      // Fourth node
@@ -611,7 +611,7 @@ void test_parse_map()
      BOOST_TEST_EQ(p.get_consumed(), 27);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 1u);
-     BOOST_TEST_EQ(res->value, "key2\r\n");
+     BOOST_TEST_EQ(res->value, "key2");
      BOOST_TEST(!p.done());
 
      // Fifth node
@@ -620,7 +620,7 @@ void test_parse_map()
      BOOST_TEST_EQ(p.get_consumed(), 36);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 1u);
-     BOOST_TEST_EQ(res->value, "value2\r\n");
+     BOOST_TEST_EQ(res->value, "value2");
      BOOST_TEST(p.done());
    }
 
@@ -937,15 +937,15 @@ int main()
    test_parse_map();
    test_parse_blob_string();
    test_parse_streamed_string();
-   //test_simple_string_adapter();
+   test_simple_string_adapter();
 
-   //test_low_level_sync_sans_io();
+   test_low_level_sync_sans_io();
    test_issue_210_empty_set();
    test_issue_210_non_empty_set_size_one();
    test_issue_210_non_empty_set_size_two();
    test_issue_210_no_nested();
-   //test_issue_233_array_with_null();
-   //test_issue_233_optional_array_with_null();
+   test_issue_233_array_with_null();
+   test_issue_233_optional_array_with_null();
    test_check_counter_adapter();
 
    return boost::report_errors();

@@ -356,7 +356,7 @@ public:
          return;
       }
 
-      BOOST_ASSERT(nd.aggregate_size == 1);
+      BOOST_ASSERT(nd.aggregate_size == 0);
 
       if (nd.depth < 1) {
          ec = redis::error::expects_resp3_set;
