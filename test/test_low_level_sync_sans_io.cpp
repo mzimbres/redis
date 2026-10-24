@@ -395,7 +395,7 @@ void test_parse_simple_string()
      BOOST_TEST_EQ(p.get_consumed(), 11);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::simple_string);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "ab\rd\nefg\r\n");
+     BOOST_TEST_EQ(res->value, "ab\rd\nefg");
      BOOST_TEST(p.done());
    }
 
@@ -890,10 +890,46 @@ void test_parse_null()
    }
 }
 
+void test_parse_boolean()
+{
+   using boost::redis::resp3::parser;
+   using boost::redis::error;
+   using boost::system::error_code;
+
+   { std::string_view const data = "#t\r\n";
+
+     parser p;
+     error_code ec;
+     auto const res = p.consume(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(p.get_consumed(), 4);
+     BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::boolean);
+     BOOST_TEST_EQ(res->depth, 0u);
+     BOOST_TEST_EQ(res->aggregate_size, 1);
+     BOOST_TEST(p.done());
+   }
+
+   { std::string_view const data = "#f\r\n";
+
+     parser p;
+     error_code ec;
+     auto const res = p.consume(data, ec);
+     BOOST_TEST(!ec);
+     BOOST_TEST_EQ(p.get_consumed(), 4);
+     BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::boolean);
+     BOOST_TEST_EQ(res->depth, 0u);
+     BOOST_TEST_EQ(res->aggregate_size, 0);
+     BOOST_TEST(p.done());
+   }
+
+   // TODO: Test incremental parsing.
+}
+
 }  // namespace
 
 int main()
 {
+   test_parse_boolean();
    test_parse_null();
    test_parse_simple_string();
    test_parse_number();

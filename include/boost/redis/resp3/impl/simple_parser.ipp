@@ -70,6 +70,17 @@ void simple_parser::add(char c, system::error_code& ec)
             sign_ = minus_; 
       } break;
 
+      case 't':
+      {
+         if (type_ == type::boolean && pos_ == 1u)
+            size_ = 1; 
+      } break;
+      case 'f':
+      {
+         if (type_ == type::boolean && pos_ == 1u)
+            size_ = 0; 
+      } break;
+
       case '0':
       case '1':
       case '2':
@@ -84,9 +95,7 @@ void simple_parser::add(char c, system::error_code& ec)
          on_digit(c, ec);
       } break;
 
-      default: {
-         // TODO: We can set an error here for types that expect a digit.
-      }
+      default: { }
    }
 }
 
@@ -157,7 +166,7 @@ void simple_parser::set_type(char c, system::error_code& ec)
    }
 }
 
-node_view simple_parser::write_header(std::string_view data, system::error_code& ec)
+node_view simple_parser::handle_header(std::string_view data, system::error_code& ec)
 {
    std::size_t offset = 0;
    if (pos_ == 0u && !data.empty()) {
@@ -218,7 +227,6 @@ node_view simple_parser::write_header(std::string_view data, system::error_code&
          {
             return {type_, size_, i, {sign_}};
          } break;
-         case type::boolean:
          default:
          {
             return {type_, size_, i, {}};
@@ -245,7 +253,7 @@ node_view simple_parser::write_header(std::string_view data, system::error_code&
    return {};
 }
 
-node_view simple_parser::write_blob(std::string_view view)
+node_view simple_parser::handle_blob_part(std::string_view view)
 {
    view = view.substr(0, size_);
    size_ -= view.size();
@@ -267,9 +275,9 @@ node_view simple_parser::write_blob(std::string_view view)
 node_view simple_parser::write(std::string_view view, system::error_code& ec)
 {
    if (header_done()) {
-      return write_blob(view);
+      return handle_blob_part(view);
    } else {
-      return write_header(view, ec);
+      return handle_header(view, ec);
    }
 }
 

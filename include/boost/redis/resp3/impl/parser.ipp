@@ -68,6 +68,8 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
    consumed_ += ret.depth;
    ret.depth = depth_;
 
+   // TODO: Move this check into the swith. boolean will exit here if false and
+   // in the switch if it is true. This is confusing.
    if (ret.aggregate_size == 0u) {
       commit_elem();
       header_.reset();
@@ -79,6 +81,7 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
       {
          return std::nullopt;
       } break;
+      case type::boolean:
       case type::number:
       {
          commit_elem();

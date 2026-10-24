@@ -32,8 +32,8 @@ private:
    auto on_digit(char c, system::error_code&) -> void;
    auto add(char c, system::error_code& ec) -> void;
    auto set_type(char c, system::error_code& ec) -> void;
-   auto write_header(std::string_view data, system::error_code& ec) -> node_view;
-   auto write_blob(std::string_view data) -> node_view;
+   auto handle_header(std::string_view data, system::error_code& ec) -> node_view;
+   auto handle_blob_part(std::string_view data) -> node_view;
 
 public:
    auto reset() -> void;
@@ -44,7 +44,8 @@ public:
    //
    // Return value
    //
-   // - number: {type::number, <value>, <bytes-consumed>, "+"/"-"};
+   // - number:  { type::number,  <value>,   <bytes-consumed>, "+"/"-" };
+   // - boolean: { type::boolean, undefined, <bytes-consumed>, "t"/"f" };
    //
    auto write(std::string_view data, system::error_code& ec) -> node_view;
 };
