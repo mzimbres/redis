@@ -59,9 +59,20 @@ struct converter<T, true> {
    template <class String>
    static void apply(T& i, resp3::basic_node<String> const& node, system::error_code& ec)
    {
-      auto const res = std::from_chars(node.value.data(), node.value.data() + node.value.size(), i);
-      if (res.ec != std::errc())
+      if (node.data_type != resp3::type::number) {
          ec = redis::error::not_a_number;
+         return;
+      }
+
+      i = node.aggregate_size;
+      if (node.value == "-") {
+         if constexpr (std::is_signed<T>::value) {
+            i *= -1;
+         } else {
+            ec = redis::error::not_a_number; // TODO: We need a new error code.
+            return;
+         }
+      }
    }
 };
 

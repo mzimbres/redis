@@ -4,24 +4,25 @@
  * accompanying file LICENSE.txt)
  */
 
-#include <boost/redis/resp3/detail/header_parser.hpp>
+#include <boost/redis/resp3/detail/simple_parser.hpp>
 #include <boost/assert.hpp>
 
 namespace boost::redis::resp3::detail {
 
-void header_parser::reset()
+void simple_parser::reset()
 {
    type_ = type::invalid;
    size_ = 0;
    last_cr_pos_ = 0;
    last_lf_pos_ = 0;
    pos_ = 0;
+   sign_ = plus_; 
 }
 
-void header_parser::on_digit(char c, system::error_code&)
+void simple_parser::on_digit(char c, system::error_code&)
 {
    switch (type_) {
-      case type::number: // TODO: Handle sign
+      case type::number:
       case type::streamed_string_part:
       case type::blob_error:
       case type::verbatim_string:
@@ -40,9 +41,9 @@ void header_parser::on_digit(char c, system::error_code&)
    }
 }
 
-void header_parser::add(char c, system::error_code& ec)
+void simple_parser::add(char c, system::error_code& ec)
 {
-   BOOST_ASSERT(!done());
+   BOOST_ASSERT(!header_done());
 
    switch (c) {
       case '\n':
@@ -65,8 +66,8 @@ void header_parser::add(char c, system::error_code& ec)
 
       case '-':
       {
-         if (type_ == type::number && pos_ == 0u)
-            sign_ = -1; 
+         if (type_ == type::number && pos_ == 1u)
+            sign_ = minus_; 
       } break;
 
       case '0':
@@ -89,7 +90,7 @@ void header_parser::add(char c, system::error_code& ec)
    }
 }
 
-void header_parser::set_type(char c, system::error_code& ec)
+void simple_parser::set_type(char c, system::error_code& ec)
 {
    switch (c) {
       case ':':
@@ -156,7 +157,7 @@ void header_parser::set_type(char c, system::error_code& ec)
    }
 }
 
-node_view header_parser::write_header(std::string_view data, system::error_code& ec)
+node_view simple_parser::write_header(std::string_view data, system::error_code& ec)
 {
    std::size_t offset = 0;
    if (pos_ == 0u && !data.empty()) {
@@ -169,7 +170,7 @@ node_view header_parser::write_header(std::string_view data, system::error_code&
    }
 
    std::size_t i = offset;
-   for (; i < data.size() && !done(); ++i) {
+   for (; i < data.size() && !header_done(); ++i) {
       add(data[i], ec);
       if (ec)
          return {};
@@ -177,7 +178,7 @@ node_view header_parser::write_header(std::string_view data, system::error_code&
       pos_ += 1;
    }
 
-   if (done()) {
+   if (header_done()) {
       switch (type_) {
          case type::streamed_string_part:
          case type::blob_error:
@@ -215,9 +216,7 @@ node_view header_parser::write_header(std::string_view data, system::error_code&
          }
          case type::number:
          {
-            //size_ *= sign_; // TODO: size must be signed.
-            auto const view = data.substr(offset, i - offset);
-            return {type_, size_, i, view};
+            return {type_, size_, i, {sign_}};
          } break;
          case type::boolean:
          default:
@@ -246,7 +245,7 @@ node_view header_parser::write_header(std::string_view data, system::error_code&
    return {};
 }
 
-node_view header_parser::write_blob(std::string_view view)
+node_view simple_parser::write_blob(std::string_view view)
 {
    view = view.substr(0, size_);
    size_ -= view.size();
@@ -265,16 +264,16 @@ node_view header_parser::write_blob(std::string_view view)
    return {type_, size_, consumed, view};
 }
 
-node_view header_parser::write(std::string_view view, system::error_code& ec)
+node_view simple_parser::write(std::string_view view, system::error_code& ec)
 {
-   if (done()) {
+   if (header_done()) {
       return write_blob(view);
    } else {
       return write_header(view, ec);
    }
 }
 
-bool header_parser::done() const noexcept
+bool simple_parser::header_done() const noexcept
 {
    // TODO: Add assertts.
    //BOOST_ASSER(t == type::null != pos_ != 3);

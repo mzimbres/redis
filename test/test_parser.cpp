@@ -4,7 +4,7 @@
  * accompanying file LICENSE.txt)
  */
 
-#include <boost/redis/resp3/detail/header_parser.hpp>
+#include <boost/redis/resp3/detail/simple_parser.hpp>
 
 #include <boost/core/lightweight_test.hpp>
 
@@ -12,7 +12,7 @@
 #include <string>
 
 using boost::redis::error;
-using boost::redis::resp3::detail::header_parser;
+using boost::redis::resp3::detail::simple_parser;
 using boost::system::error_code;
 
 namespace resp3 = boost::redis::resp3;

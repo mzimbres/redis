@@ -8,7 +8,7 @@
 #define BOOST_REDIS_RESP3_PARSER_HPP
 
 #include <boost/redis/resp3/node.hpp>
-#include <boost/redis/resp3/detail/header_parser.hpp>
+#include <boost/redis/resp3/detail/simple_parser.hpp>
 #include <boost/redis/error.hpp>
 
 #include <boost/system/error_code.hpp>
@@ -32,7 +32,7 @@ public:
 private:
    using sizes_type = std::array<std::size_t, max_embedded_depth + 1>;
    
-   boost::redis::resp3::detail::header_parser header_{};
+   resp3::detail::simple_parser header_{};
 
    // sizes_[0] = 2 because the sentinel must be more than 1.
    static constexpr sizes_type default_sizes = {

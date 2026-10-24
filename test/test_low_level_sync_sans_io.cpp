@@ -266,6 +266,7 @@ void test_parse_number()
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res->depth, 0u);
      BOOST_TEST_EQ(res->aggregate_size, 42u);
+     BOOST_TEST_EQ(res->value, "+");
      BOOST_TEST(p.done());
    }
 
@@ -279,6 +280,7 @@ void test_parse_number()
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res->depth, 0u);
      BOOST_TEST_EQ(res->aggregate_size, 42);
+     BOOST_TEST_EQ(res->value, "+");
      BOOST_TEST(p.done());
    }
 
@@ -291,7 +293,8 @@ void test_parse_number()
      BOOST_TEST_EQ(p.get_consumed(), 6);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->aggregate_size, -42); // TODO
+     BOOST_TEST_EQ(res->aggregate_size, 42);
+     BOOST_TEST_EQ(res->value, "-");
      BOOST_TEST(p.done());
    }
 
@@ -313,7 +316,8 @@ void test_parse_number()
      BOOST_TEST_EQ(p.get_consumed(), 12);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::number);
      BOOST_TEST_EQ(res->depth, 0u);
-     BOOST_TEST_EQ(res->value, "56789\r\n");
+     BOOST_TEST_EQ(res->aggregate_size, 123456789);
+     BOOST_TEST_EQ(res->value, "+");
      BOOST_TEST(p.done());
    }
 
