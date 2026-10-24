@@ -29,10 +29,11 @@ struct header_parser {
    void on_digit(char c, system::error_code&);
    void add(char c, system::error_code& ec);
    void set_type(char c, system::error_code& ec);
+   node_view write_header(std::string_view data, system::error_code& ec);
+   node_view write_blob(std::string_view data);
 
    // public
    void reset();
-   node_view make_node();
 
    // To avoid extending the return type with yet another field, the
    // node_view::depth with be set with the consumed bytes.

@@ -17,21 +17,6 @@
 
 namespace boost::redis::resp3 {
 
-void parser::commit_and_return(system::error_code& ec) noexcept
-{
-   if (header_.size_ == 0u || header_.type_ == type::number) {
-      commit_elem();
-      header_.reset();
-   } else if (is_aggregate(header_.type_)) {
-      if (depth_ == max_embedded_depth) {
-         ec = error::exceeeds_max_nested_depth;
-         return;
-      }
-      sizes_[++depth_] = header_.size_;
-      header_.reset();
-   }
-}
-
 parser::parser() { reset(); }
 
 void parser::rewind()
@@ -75,38 +60,48 @@ auto parser::consume(std::string_view view, system::error_code& ec) noexcept -> 
    if (view.size() == 0u)
       return std::nullopt;
 
-   if (header_.done()) {
-      view = view.substr(0, header_.size_);
-      consumed_ += view.size();
-      header_.size_ -= view.size();
+   auto ret = header_.write(view, ec);
+   if (ec) {
+      return {};
+   }
 
-      auto ret = header_.make_node();
-      ret.depth = depth_;
-      if (view.size() > 2) {
-         ret.value = view;
-      }
-      if (ret.aggregate_size == 0u) {
+   consumed_ += ret.depth;
+   ret.depth = depth_;
+
+   if (ret.aggregate_size == 0u) {
+      commit_elem();
+      header_.reset();
+      return ret;
+   }
+
+   switch (ret.data_type) {
+      case type::invalid:
+      {
+         return std::nullopt;
+      } break;
+      case type::number:
+      {
          commit_elem();
          header_.reset();
-      }
+      } break;
+      case type::array:
+      case type::push:
+      case type::set:
+      case type::map:
+      case type::attribute:
+      {
+         if (depth_ == max_embedded_depth) {
+            ec = error::exceeeds_max_nested_depth;
+            return {};
+         }
+         sizes_[++depth_] = ret.aggregate_size;
+         header_.reset();
+      } break;
 
-      return ret;
-   } else {
-      auto res = header_.write(view, ec);
-      if (ec) {
-         return {};
-      }
-
-      consumed_ += res.depth;
-
-      if (res.data_type == type::invalid) {
-         return std::nullopt;
-      }
-
-      res.depth = depth_;
-      commit_and_return(ec);
-      return res;
+      default: {}
    }
+
+   return ret;
 }
 
 bool parser::is_parsing() const noexcept

@@ -156,7 +156,7 @@ void header_parser::set_type(char c, system::error_code& ec)
    }
 }
 
-node_view header_parser::write(std::string_view data, system::error_code& ec)
+node_view header_parser::write_header(std::string_view data, system::error_code& ec)
 {
    std::size_t offset = 0;
    if (pos_ == 0u && !data.empty()) {
@@ -237,7 +237,7 @@ node_view header_parser::write(std::string_view data, system::error_code& ec)
          default:
          {
             // Needs more
-            return {{type::invalid}, {}, i, {}};
+            return {type::invalid, std::size_t(-1), i, {}};
          }
       }
    }
@@ -246,9 +246,32 @@ node_view header_parser::write(std::string_view data, system::error_code& ec)
    return {};
 }
 
-node_view header_parser::make_node()
+node_view header_parser::write_blob(std::string_view view)
 {
-   return {type_, size_, 0, {}};
+   view = view.substr(0, size_);
+   size_ -= view.size();
+
+   auto const consumed = view.size();
+   if (size_ == 1) {
+      view.remove_suffix(1);
+   } else if (size_ == 0) {
+      if (view.size() > 1) {
+         view.remove_suffix(2);
+      } else {
+         view.remove_suffix(1);
+      }
+   }
+
+   return {type_, size_, consumed, view};
+}
+
+node_view header_parser::write(std::string_view view, system::error_code& ec)
+{
+   if (done()) {
+      return write_blob(view);
+   } else {
+      return write_header(view, ec);
+   }
 }
 
 bool header_parser::done() const noexcept

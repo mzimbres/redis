@@ -52,8 +52,6 @@ private:
    // The number of bytes consumed from the buffer.
    std::size_t consumed_;
 
-   void commit_and_return(system::error_code& ec) noexcept;
-
    void commit_elem() noexcept;
 
 public:

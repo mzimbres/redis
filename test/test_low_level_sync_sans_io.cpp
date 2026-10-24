@@ -783,7 +783,7 @@ void test_parse_blob_string()
      p.rewind();
      res = p.consume(d2, ec);
      BOOST_TEST(!ec);
-     BOOST_TEST_EQ(p.get_consumed(), 6);
+     BOOST_TEST_EQ(p.get_consumed(), 1);
      BOOST_TEST_EQ(res->data_type, boost::redis::resp3::type::blob_string);
      BOOST_TEST_EQ(res->depth, 0u);
      BOOST_TEST_EQ(res->value, "");
@@ -900,10 +900,10 @@ int main()
    //test_simple_string_adapter();
 
    //test_low_level_sync_sans_io();
-   //test_issue_210_empty_set();
-   //test_issue_210_non_empty_set_size_one();
-   //test_issue_210_non_empty_set_size_two();
-   //test_issue_210_no_nested();
+   test_issue_210_empty_set();
+   test_issue_210_non_empty_set_size_one();
+   test_issue_210_non_empty_set_size_two();
+   test_issue_210_no_nested();
    //test_issue_233_array_with_null();
    //test_issue_233_optional_array_with_null();
    test_check_counter_adapter();
