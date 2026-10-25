@@ -18,18 +18,17 @@ namespace boost::redis::resp3::detail {
 // Parses REPS3 non-aggregate types.
 class simple_parser {
 private:
-   static constexpr char const* const plus_ = "+";
-   static constexpr char const* const minus_ = "-";
-
    type type_ = type::invalid;
    std::size_t size_ = 0;
    std::size_t pos_ = 0;
    std::size_t last_cr_pos_ = 0;
    std::size_t last_lf_pos_ = 0;
-   char const* sign_ = plus_;
+   char const* sign_ = "+";
 
    auto header_done() const noexcept -> bool;
+   auto on_sign(char const* value, system::error_code& ec) -> void;
    auto on_digit(char c, system::error_code&) -> void;
+   auto on_bool_value(std::size_t c, system::error_code&) -> void;
    auto add(char c, system::error_code& ec) -> void;
    auto set_type(char c, system::error_code& ec) -> void;
    auto handle_header(std::string_view data, system::error_code& ec) -> node_view;

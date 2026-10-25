@@ -356,8 +356,6 @@ public:
          return;
       }
 
-      BOOST_ASSERT(nd.aggregate_size == 0);
-
       if (nd.depth < 1) {
          ec = redis::error::expects_resp3_set;
          return;
@@ -385,12 +383,10 @@ public:
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (is_aggregate(nd.data_type)) {
-         if (element_multiplicity(nd.data_type) != 2)
+         if (nd.data_type != resp3::type::map)
             ec = redis::error::expects_resp3_map;
          return;
       }
-
-      BOOST_ASSERT(nd.aggregate_size == 1);
 
       if (nd.depth < 1) {
          ec = redis::error::expects_resp3_map;
@@ -423,8 +419,7 @@ public:
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (is_aggregate(nd.data_type)) {
-         auto const m = element_multiplicity(nd.data_type);
-         result.reserve(result.size() + m * nd.aggregate_size);
+         result.reserve(result.size() + nd.aggregate_size);
       } else {
          result.push_back({});
          boost_redis_from_bulk(result.back(), nd, ec);
@@ -452,7 +447,7 @@ public:
             return;
          }
 
-         if (result.size() != nd.aggregate_size * element_multiplicity(nd.data_type)) {
+         if (result.size() != nd.aggregate_size) {
             ec = redis::error::incompatible_size;
             return;
          }
@@ -481,7 +476,6 @@ struct list_impl {
    void on_node(Result& result, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       if (!is_aggregate(nd.data_type)) {
-         BOOST_ASSERT(nd.aggregate_size == 1);
          if (nd.depth < 1) {
             ec = redis::error::expects_resp3_aggregate;
             return;

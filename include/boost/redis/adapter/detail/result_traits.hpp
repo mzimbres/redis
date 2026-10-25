@@ -185,9 +185,7 @@ public:
       using std::visit;
 
       if (elem.depth == 0) {
-         auto const multiplicity = element_multiplicity(elem.data_type);
-         auto const real_aggr_size = elem.aggregate_size * multiplicity;
-         if (real_aggr_size != std::tuple_size<Tuple>::value)
+         if (elem.aggregate_size != std::tuple_size<Tuple>::value)
             ec = redis::error::incompatible_size;
 
          return;

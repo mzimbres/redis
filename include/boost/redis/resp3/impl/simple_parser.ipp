@@ -16,10 +16,10 @@ void simple_parser::reset()
    last_cr_pos_ = 0;
    last_lf_pos_ = 0;
    pos_ = 0;
-   sign_ = plus_; 
+   sign_ = "+"; 
 }
 
-void simple_parser::on_digit(char c, system::error_code&)
+void simple_parser::on_digit(char c, system::error_code& ec)
 {
    switch (type_) {
       case type::number:
@@ -37,7 +37,57 @@ void simple_parser::on_digit(char c, system::error_code&)
          //static constexpr std::size_t uint64_digits = (std::numeric_limits<std::uint64_t>::digits10);
          size_ = size_ * 10 + (c - '0');
       } break;
+      case type::boolean:
+      {
+         ec = error::unexpected_bool_value;
+      } break;
       default: {}
+   }
+}
+
+void simple_parser::on_sign(char const* value, system::error_code& ec)
+{
+   switch (type_) {
+      case type::number:
+      {
+         if (pos_ != 1u) {
+            // TODO: Create a new error for this.
+            ec = error::invalid_data_type;
+            return;
+         }
+
+         sign_ = value; 
+      } break;
+      case type::simple_error:
+      case type::simple_string: break;
+      default:
+      {
+         ec = error::invalid_data_type; // Create error unexpected_value:
+         return;
+      }
+   }
+}
+
+auto simple_parser::on_bool_value(std::size_t v, system::error_code& ec) -> void
+{
+   switch (type_) {
+      case type::boolean:
+      {
+         if (pos_ != 1u) {
+            ec = error::invalid_data_type;
+            return;
+         }
+
+         size_ = v; 
+      } break;
+
+      case type::simple_string:
+      case type::simple_error: break;
+      default:
+      {
+         ec = error::invalid_data_type;
+         return;
+      }
    }
 }
 
@@ -64,22 +114,11 @@ void simple_parser::add(char c, system::error_code& ec)
 
       } break;
 
-      case '-':
-      {
-         if (type_ == type::number && pos_ == 1u)
-            sign_ = minus_; 
-      } break;
+      case '+': on_sign("+", ec); break;
+      case '-': on_sign("-", ec); break;
 
-      case 't':
-      {
-         if (type_ == type::boolean && pos_ == 1u)
-            size_ = 1; 
-      } break;
-      case 'f':
-      {
-         if (type_ == type::boolean && pos_ == 1u)
-            size_ = 0; 
-      } break;
+      case 't': on_bool_value(1u, ec); break;
+      case 'f': on_bool_value(0u, ec); break;
 
       case '0':
       case '1':
@@ -95,7 +134,18 @@ void simple_parser::add(char c, system::error_code& ec)
          on_digit(c, ec);
       } break;
 
-      default: { }
+      default:
+      {
+         switch (type_) {
+            case type::simple_error:
+            case type::simple_string: break;
+            default:
+            {
+               ec = error::invalid_data_type; // Create error unexpected_value:
+               return;
+            }
+         }
+      }
    }
 }
 

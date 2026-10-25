@@ -343,6 +343,14 @@ void test_parse_number()
      BOOST_TEST_EQ(res->aggregate_size, 1256u);
      BOOST_TEST(p.done());
    }
+
+   { std::string_view const data = ":42d9\r\n";
+
+     parser p;
+     error_code ec;
+     auto const res = p.consume(data, ec);
+     BOOST_TEST_EQ(ec, error::invalid_data_type);
+   }
 }
 
 void test_simple_string_adapter()
@@ -928,6 +936,14 @@ void test_parse_boolean()
      error_code ec;
      auto const res = p.consume(data, ec);
      BOOST_TEST_EQ(ec, error::unexpected_bool_value);
+   }
+
+   { std::string_view const data = "#u\r\n";
+
+     parser p;
+     error_code ec;
+     auto const res = p.consume(data, ec);
+     BOOST_TEST_EQ(ec, error::invalid_data_type);
    }
 
    // TODO: Test incremental parsing.
