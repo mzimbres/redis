@@ -212,9 +212,9 @@ op_vec_type const set_expected_1e = set_e1d;
 
 generic_response const array_e1a
 {{ {resp3::type::array,       3UL, 0UL, {}}
-   , {resp3::type::blob_string, 1UL, 1UL, {"11"}}
-   , {resp3::type::blob_string, 1UL, 1UL, {"22"}}
-   , {resp3::type::blob_string, 1UL, 1UL, {"3"}}
+   , {resp3::type::blob_string, 0UL, 1UL, {"11"}}
+   , {resp3::type::blob_string, 0UL, 1UL, {"22"}}
+   , {resp3::type::blob_string, 0UL, 1UL, {"3"}}
  }};
 
 result<std::vector<int>> const array_e1b{{11, 22, 3}};
@@ -226,15 +226,15 @@ result<std::list<int>> const array_e1g{{11, 22, 3}};
 result<std::deque<int>> const array_e1h{{11, 22, 3}};
 
 generic_response const map_expected_1a
-{{ {resp3::type::map,         4UL, 0UL, {}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key1"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value1"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key2"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value2"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key3"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value3"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"key3"}}
-, {resp3::type::blob_string, 1UL, 1UL, {"value3"}}
+{{ {resp3::type::map,         8UL, 0UL, {}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key1"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value1"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key2"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value2"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key3"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value3"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"key3"}}
+, {resp3::type::blob_string, 0UL, 1UL, {"value3"}}
 }};
 
 map_type const map_expected_1b
@@ -282,13 +282,13 @@ tuple8_type const map_e1f
 };
 
 generic_response const attr_e1a
-{{ {resp3::type::attribute,     1UL, 0UL, {}}
-   , {resp3::type::simple_string, 1UL, 1UL, "key-popularity"}
-   , {resp3::type::map,           2UL, 1UL, {}}
-   , {resp3::type::blob_string,   1UL, 2UL, "a"}
-   , {resp3::type::doublean,      1UL, 2UL, "0.1923"}
-   , {resp3::type::blob_string,   1UL, 2UL, "b"}
-   , {resp3::type::doublean,      1UL, 2UL, "0.0012"}
+{{ {resp3::type::attribute,     2UL, 0UL, {}}
+   , {resp3::type::simple_string, 0UL, 1UL, "key-popularity"}
+   , {resp3::type::map,           4UL, 1UL, {}}
+   , {resp3::type::blob_string,   0UL, 2UL, "a"}
+   , {resp3::type::doublean,      0UL, 2UL, "0.1923"}
+   , {resp3::type::blob_string,   0UL, 2UL, "b"}
+   , {resp3::type::doublean,      0UL, 2UL, "0.0012"}
 }  };
 
 generic_response const attr_e1b
@@ -367,6 +367,14 @@ generic_response const attr_e1b
 #define S18d  "$0\r\n\r\n" 
 
 #define NUMBER_TEST_CONDITIONS(test) \
+   test(make_expected(S04e, array_e1a));\
+   test(make_expected(S04e, array_e1b));\
+   test(make_expected(S04e, array_e1c));\
+   test(make_expected(S04e, array_e1f));\
+   test(make_expected(S04e, array_e1g));\
+   test(make_expected(S04e, array_e1h));\
+   test(make_expected(S04e, array_type2{}, boost::redis::error::incompatible_size));\
+   test(make_expected(S04e, tuple_int_2{}, boost::redis::error::incompatible_size));\
    test(make_expected(S01a, result<std::optional<bool>>{}, boost::redis::error::unexpected_bool_value));\
    test(make_expected(S01b, result<bool>{{false}}));\
    test(make_expected(S01b, node_type{{resp3::type::boolean, 0UL, 0UL, {}}}));\
@@ -404,6 +412,13 @@ generic_response const attr_e1b
    test(make_expected(S03b, map_e1f));\
    test(make_expected(S03b, map_e1g));\
    test(make_expected(S03b, map_e1k));\
+   test(make_expected(S03b, map_expected_1a));\
+   test(make_expected(S03b, map_expected_1b));\
+   test(make_expected(S03b, map_expected_1c));\
+   test(make_expected(S03b, map_expected_1d));\
+   test(make_expected(S03b, map_expected_1e));\
+   test(make_expected(S08a, attr_e1a)); \
+   test(make_expected(S08b, attr_e1b)); \
 
    //test(make_expected(S02a, streamed_string_e2)); \
    //test(make_expected(S02b, result<int>{}, boost::redis::error::not_a_number)); \
@@ -411,21 +426,6 @@ generic_response const attr_e1b
    //test(make_expected(S02b, streamed_string_e1)); \
    //test(make_expected(S02c, result<std::string>{}, boost::redis::error::not_a_number)); \
 
-   //test(make_expected(S03b, map_expected_1a));\
-   //test(make_expected(S03b, map_expected_1b));\
-   //test(make_expected(S03b, map_expected_1c));\
-   //test(make_expected(S03b, map_expected_1d));\
-   //test(make_expected(S03b, map_expected_1e));\
-   //test(make_expected(S08a, attr_e1a)); \
-   //test(make_expected(S08b, attr_e1b)); \
-   //test(make_expected(S04e, array_e1a));\
-   //test(make_expected(S04e, array_e1b));\
-   //test(make_expected(S04e, array_e1c));\
-   //test(make_expected(S04e, array_e1f));\
-   //test(make_expected(S04e, array_e1g));\
-   //test(make_expected(S04e, array_e1h));\
-   //test(make_expected(S04e, array_type2{}, boost::redis::error::incompatible_size));\
-   //test(make_expected(S04e, tuple_int_2{}, boost::redis::error::incompatible_size));\
    //test(make_expected(S04f, array_type2{}, boost::redis::error::nested_aggregate_not_supported));\
    //test(make_expected(S04g, generic_response{}, boost::redis::error::exceeeds_max_nested_depth));\
    //test(make_expected(S04h, array_e1d));\

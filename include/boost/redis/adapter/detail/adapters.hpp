@@ -59,18 +59,25 @@ struct converter<T, true> {
    template <class String>
    static void apply(T& i, resp3::basic_node<String> const& node, system::error_code& ec)
    {
-      if (node.data_type != resp3::type::number) {
-         ec = redis::error::not_a_number;
-         return;
-      }
-
-      i = node.aggregate_size;
-      if (node.value == "-") {
-         if constexpr (std::is_signed<T>::value) {
-            i *= -1;
-         } else {
-            ec = redis::error::not_a_number; // TODO: We need a new error code.
-            return;
+      switch (node.data_type) {
+         case resp3::type::number:
+         {
+            i = node.aggregate_size;
+            if (node.value == "-") {
+               if constexpr (std::is_signed<T>::value) {
+                  i *= -1;
+               } else {
+                  // TODO: We need a new error code.
+                  ec = redis::error::not_a_number;
+                  return;
+               }
+            }
+         } break;
+         default:
+         {
+            auto const res = std::from_chars(node.value.data(), node.value.data() + node.value.size(), i);
+            if (res.ec != std::errc())
+               ec = redis::error::not_a_number;
          }
       }
    }
@@ -457,7 +464,6 @@ public:
             return;
          }
 
-         BOOST_ASSERT(nd.aggregate_size == 1);
          boost_redis_from_bulk(result.at(i_), nd, ec);
       }
 

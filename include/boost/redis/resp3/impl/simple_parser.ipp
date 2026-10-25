@@ -137,6 +137,7 @@ void simple_parser::add(char c, system::error_code& ec)
       default:
       {
          switch (type_) {
+            case type::doublean:
             case type::simple_error:
             case type::simple_string: break;
             default:
