@@ -196,12 +196,12 @@ generic_response const push_e1b
 
 generic_response const set_expected1a
    {{{resp3::type::set,            6UL, 0UL, {}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"orange"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"apple"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"one"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"two"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"three"}}
-   , {resp3::type::simple_string,  1UL, 1UL, {"orange"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"orange"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"apple"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"one"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"two"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"three"}}
+   , {resp3::type::simple_string,  0UL, 1UL, {"orange"}}
   }};
 
 mset_type const set_e1f{{"apple", "one", "orange", "orange", "three", "two"}};
@@ -367,7 +367,7 @@ generic_response const attr_e1b
 #define S18d  "$0\r\n\r\n" 
 
 #define NUMBER_TEST_CONDITIONS(test) \
-   test(make_expected(S01a, result<std::optional<bool>>{}, boost::redis::error::unexpected_bool_value)); \
+   test(make_expected(S01a, result<std::optional<bool>>{}, boost::redis::error::unexpected_bool_value));\
    test(make_expected(S01b, result<bool>{{false}})); \
    test(make_expected(S01b, node_type{{resp3::type::boolean, 1UL, 0UL, {"f"}}})); \
    test(make_expected(S01c, result<bool>{{true}})); \
@@ -607,10 +607,10 @@ void test_adapter()
 
    auto f = boost_redis_adapt(resp);
    f.on_init();
-   f.on_node(resp3::node_view{type::simple_string, 1, 0, "Hello"}, ec);
+   f.on_node(resp3::node_view{type::simple_string, 0, 0, "Hello"}, ec);
    f.on_done();
    f.on_init();
-   f.on_node(resp3::node_view{type::number, 1, 0, "42"}, ec);
+   f.on_node(resp3::node_view{type::number, 42, 0, "+"}, ec);
    f.on_done();
 
    BOOST_TEST_EQ(std::get<0>(resp).value(), "Hello");
