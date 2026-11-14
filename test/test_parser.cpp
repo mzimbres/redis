@@ -127,13 +127,43 @@ void test_simple_string_adapter()
 
    { std::string_view const data = "+abc\r\n";
 
-     result<std::string> resp;
-     auto adapter = adapt2(resp);
+     response<std::string> resp;
+     auto adapter = boost_redis_adapt(resp);
      parser p;
      error_code ec;
-     parse(p, data, adapter, ec);
+     auto const res = parse(p, data, adapter, ec);
      BOOST_TEST_EQ(ec, error_code());
-     BOOST_TEST_EQ(resp.value(), "abc");
+     BOOST_TEST(res);
+     BOOST_TEST(std::get<0>(resp).has_value());
+     BOOST_TEST(!std::get<0>(resp).has_error());
+     BOOST_TEST_EQ(std::get<0>(resp).value(), "abc");
+   }
+
+   { std::string_view const d1 = "+ab", d2 = "cd", d3 = "e\r\n";
+
+     response<std::string> resp;
+     auto adapter = boost_redis_adapt(resp);
+     parser p;
+     error_code ec;
+     bool res = false;
+
+     res = parse(p, d1, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(!res);
+
+     p.rewind();
+     res = parse(p, d2, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(!res);
+
+     p.rewind();
+     res = parse(p, d3, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(res);
+
+     BOOST_TEST(std::get<0>(resp).has_value());
+     BOOST_TEST(!std::get<0>(resp).has_error());
+     BOOST_TEST_EQ(std::get<0>(resp).value(), "abcde");
    }
 }
 
@@ -165,6 +195,56 @@ void test_map_adapter()
    }
 }
 
+void test_array_adapter()
+{
+   using boost::redis::resp3::parser;
+   using boost::redis::error;
+   using boost::system::error_code;
+
+
+   { std::string_view const d1 = "*2\r\n+va", d2 = "lu", d3 = "e1\r", d4 = "\n+va", d5 = "lue2\r\n";
+
+     response<std::vector<std::string>> resp;
+
+     auto adapter = boost_redis_adapt(resp);
+     parser p;
+     error_code ec;
+     bool res = false;
+
+     res = parse(p, d1, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(!res);
+
+     p.rewind();
+     res = parse(p, d2, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(!res);
+
+     p.rewind();
+     res = parse(p, d3, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(!res);
+
+     p.rewind();
+     res = parse(p, d4, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(!res);
+
+     p.rewind();
+     res = parse(p, d5, adapter, ec);
+     BOOST_TEST_EQ(ec, error_code());
+     BOOST_TEST(res);
+
+     BOOST_TEST(std::get<0>(resp).has_value());
+     BOOST_TEST(!std::get<0>(resp).has_error());
+
+     auto const& v = std::get<0>(resp).value();
+
+     BOOST_TEST_EQ(v.size(), 2u);
+     BOOST_TEST_EQ(v.front(), "value1");
+     BOOST_TEST_EQ(v.front(), "value2");
+   }
+}
 
 void test_parse_simple_string()
 {
@@ -1061,10 +1141,13 @@ int main()
    test_parse_set();
    test_parse_map();
 
-   // Adapters
-   test_simple_error_adapter();
-   test_map_adapter();
+   // Simple adapters
    test_simple_string_adapter();
+   test_simple_error_adapter();
+
+   // Aggregate adapters
+   test_map_adapter();
+   test_array_adapter();
 
    return boost::report_errors();
 }

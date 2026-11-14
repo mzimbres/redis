@@ -197,18 +197,12 @@ public:
             if (!res_->has_value())
                return;
 
-            if (next_is_append_) {
-               res_->value().back().value.append(nd.value.begin(), nd.value.end());
-            } else {
-               res_->value().push_back({
-                  nd.data_type,
-                  0u,
-                  nd.depth,
-                  std::string{std::cbegin(nd.value), std::cend(nd.value)}
-               });
+            if (!std::exchange(next_is_append_, nd.aggregate_size != 0u)) {
+               res_->value().push_back({nd.data_type, 0u, nd.depth, {}});
             }
 
-            next_is_append_ = nd.aggregate_size != 0u;
+            res_->value().back().value.append(nd.value.begin(), nd.value.end());
+
          } break;
          default:
          {
