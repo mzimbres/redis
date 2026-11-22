@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2025 Marcelo Zimbres Silva (mzimbres@gmail.com)
+/* Copyright (c) Marcelo Zimbres Silva (mzimbres@gmail.com)
  *
  * Distributed under the Boost Software License, Version 1.0. (See
  * accompanying file LICENSE.txt)
@@ -426,6 +426,8 @@ public:
    void on_node(Result& res, resp3::basic_node<String> const& nd, system::error_code& ec)
    {
       using key_type = typename Result::key_type;
+      using mapped_type = typename Result::mapped_type;
+
       switch (nd.data_type) {
          case resp3::type::map:
          {
@@ -449,6 +451,8 @@ public:
                return;
             }
 
+            // TODO: This only works for strings.
+
             if (on_key_) {
                if (key_str_.empty()) {
                   // We haven't appended any data to the key yet.
@@ -457,7 +461,12 @@ public:
                      // buffer.
                      key_type key{};
                      boost_redis_from_bulk(key, nd, ec);
-                     current_ = res.insert(current_, value_type{key, {}});
+                     auto const tmp = res.insert({std::move(key), mapped_type{}});
+                     current_ = tmp.first;
+                     if (!tmp.second) {
+                        // TODO: We can't override on behalf of the user. Set
+                        // and error and exit.
+                     }
                      on_key_ = false; // Done with the key.
                   } else {
                      // Only part of the key was received. Accumulate in the
@@ -477,7 +486,12 @@ public:
                      auto tmp_node = nd;
                      tmp_node.value = key_str_; 
                      boost_redis_from_bulk(key, tmp_node, ec);
-                     current_ = res.insert(current_, value_type{key, {}});
+                     auto const tmp = res.insert({std::move(key), mapped_type{}});
+                     current_ = tmp.first;
+                     if (!tmp.second) {
+                        // TODO: We can't override on behalf of the user. Set
+                        // and error and exit.
+                     }
                      key_str_ = {};
                      on_key_ = false; // Done with the key.
                   } else {
@@ -560,6 +574,7 @@ template <class Result>
 class vector_pair {
 private:
    bool on_key_ = true;
+   bool key_added_ = false;
 
 public:
    void on_value_available(Result&) { }
@@ -573,34 +588,71 @@ public:
       resp3::basic_node<String> const& nd,
       system::error_code& ec)
    {
-      if (is_aggregate(nd.data_type)) {
-         auto const m = element_multiplicity(nd.data_type);
-         if (m != 2u) {
-            ec = redis::error::expects_resp3_map;
+      switch (nd.data_type) {
+         case resp3::type::array:
+         case resp3::type::push:
+         case resp3::type::set:
+         {
+            if (nd.depth == 0u) {
+               ec = redis::error::expects_resp3_map;
+            } else {
+               // TODO: New error code: embedded_aggragate_not_supported.
+               ec = redis::error::expects_resp3_map;
+            }
             return;
+         } break;
+         case resp3::type::attribute:
+         case resp3::type::map:
+         {
+            if (nd.depth != 0u) {
+               // TODO: New error code: embedded_aggragate_not_supported.
+               ec = redis::error::expects_resp3_map;
+               return;
+            }
+
+            // The container is not required to be empty, so take the current
+            // size into account.
+            res.reserve(res.size() + nd.aggregate_size / 2);
+         } break;
+         case resp3::type::simple_string:
+         case resp3::type::simple_error:
+         case resp3::type::number:
+         case resp3::type::doublean:
+         case resp3::type::boolean:
+         case resp3::type::big_number:
+         case resp3::type::null:
+         case resp3::type::blob_error:
+         case resp3::type::verbatim_string:
+         case resp3::type::blob_string:
+         case resp3::type::streamed_string_part:
+         {
+            if (nd.depth < 1u) {
+               ec = redis::error::expects_resp3_map;
+               return;
+            }
+
+            if (on_key_) {
+               if (!std::exchange(key_added_, true)) {
+                  res.push_back({});
+               }
+
+               BOOST_ASSERT(!res.empty());
+               boost_redis_from_bulk(res.back().first, nd, ec);
+            } else {
+               BOOST_ASSERT(!res.empty());
+               boost_redis_from_bulk(res.back().second, nd, ec);
+               key_added_ = false;
+            }
+
+            if (nd.aggregate_size == 0u)
+               on_key_ = !on_key_;
+
+         } break;
+         default:
+         {
+            ec = redis::error::expects_resp3_map;
          }
-
-         // The container is not required to be empty, so take the current size
-         // into account.
-         res.reserve(res.size() + m * nd.aggregate_size);
-         return;
       }
-
-      BOOST_ASSERT(nd.aggregate_size == 1);
-
-      if (nd.depth < 1) {
-         ec = redis::error::expects_resp3_map;
-         return;
-      }
-
-      if (on_key_) {
-         res.push_back({});
-         boost_redis_from_bulk(res.back().first, nd, ec);
-      } else {
-         boost_redis_from_bulk(res.back().second, nd, ec);
-      }
-
-      on_key_ = !on_key_;
    }
 };
 

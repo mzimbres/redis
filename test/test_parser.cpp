@@ -59,6 +59,13 @@ bool operator==(std::map<Key, Value> const& lhs, std::map<Key, Value> const& rhs
    return check_container_equal(lhs, rhs);
 }
 
+template <class Key, class Value>
+bool operator==(std::unordered_map<Key, Value> const& lhs, std::unordered_map<Key, Value> const& rhs)
+{
+   return check_container_equal(lhs, rhs);
+}
+
+
 template <class T>
 bool operator==(std::vector<T> const& lhs, std::vector<T> const& rhs)
 {
@@ -102,7 +109,11 @@ std::ostream& print_container(std::ostream& os, Container const& cont)
 
    os << "{";
 
-   while (begin != std::prev(end)) {
+   while (begin != end) {
+      auto tmp = begin; // Workaround to deal with forward iterators only.
+      if (++tmp == end)
+         break;
+
       os << *begin << ", ";
       ++begin;
    }
@@ -113,6 +124,12 @@ std::ostream& print_container(std::ostream& os, Container const& cont)
 
 template <class Key, class Value>
 std::ostream& operator<<(std::ostream& os, std::map<Key, Value> const& m)
+{
+   return print_container(os, m);
+}
+
+template <class Key, class Value>
+std::ostream& operator<<(std::ostream& os, std::unordered_map<Key, Value> const& m)
 {
    return print_container(os, m);
 }
@@ -204,10 +221,10 @@ template <class Value>
 bool stress_check(std::string_view msg, Value const& value)
 {
      std::cout << "\n" << std::endl;
-     response<Value> resp;
      std::size_t const n_values = (1 << (msg.size() - 1));
      for (std::size_t v = 0; v < n_values; ++v) {
         auto const partition = make_partition2(v, msg.size());
+        response<Value> resp;
         write_to_resp(resp, msg, partition);
         if (!check_one_value(resp, value))
            return false;
@@ -313,11 +330,33 @@ void test_simple_string_adapter()
    BOOST_TEST(stress_check(msg, value));
 }
 
-void test_adapter_map()
+void test_adapter_unordered_map_string_string()
 {
    using boost::redis::resp3::parser;
    using boost::redis::error;
    using boost::system::error_code;
+
+  auto const msg = "%2\r\n+ab\r\n+cd\r\n+ef\r\n+gh\r\n"sv;
+  std::unordered_map<std::string, std::string> value
+   {{"ab", "cd"}, {"ef", "gh"}};
+
+  BOOST_TEST(stress_check(msg, value));
+}
+
+void test_adapter_map_string_string()
+{
+   using boost::redis::resp3::parser;
+   using boost::redis::error;
+   using boost::system::error_code;
+
+   { 
+     // The adapter should be able to deal with duplicate values.
+     auto const msg = "%2\r\n+ab\r\n+cd\r\n+ab\r\n+cd\r\n"sv;
+     std::map<std::string, std::string> value
+        {{"ab", "cd"}};
+
+     BOOST_TEST(stress_check(msg, value));
+   }
 
    { 
      auto const msg = "%2\r\n+ab\r\n+cd\r\n+ef\r\n+gh\r\n"sv;
@@ -384,21 +423,14 @@ void test_adapter_vector_pair_string()
    using boost::redis::error;
    using boost::system::error_code;
 
-   auto const msg1 = "*2\r\n+abc\r\n+abc\r\n"sv;
-   auto const msg2 = "*2\r\n$3\r\nabc\r\n$3\r\nabc\r\n"sv;
-   auto const msg3 = "%1\r\n+abc\r\n+abc\r\n"sv;
-   auto const msg4 = "~2\r\n+abc\r\n+abc\r\n"sv;
-   auto const msg5 = ">2\r\n+abc\r\n+abc\r\n"sv;
+   auto const msg1 = "%1\r\n+abc\r\n+abc\r\n"sv;
+   auto const msg2 = "|1\r\n+abc\r\n+abc\r\n"sv;
 
    std::vector<std::pair<std::string, std::string>> const value
       {{{"abc"}, {"abc"}}};
 
-   // TODO
-   //BOOST_TEST(stress_check(msg1, value));
-   //BOOST_TEST(stress_check(msg2, value));
-   //BOOST_TEST(stress_check(msg3, value));
-   //BOOST_TEST(stress_check(msg4, value));
-   //BOOST_TEST(stress_check(msg5, value));
+   BOOST_TEST(stress_check(msg1, value));
+   BOOST_TEST(stress_check(msg2, value));
 }
 
 void test_adapter_vector_int()
@@ -1366,7 +1398,8 @@ int main()
    test_simple_error_adapter();
 
    // Aggregate adapters
-   test_adapter_map();
+   test_adapter_map_string_string();
+   test_adapter_unordered_map_string_string();
    test_adapter_vector_string();
    test_adapter_vector_int();
    test_adapter_vector_pair_string();
